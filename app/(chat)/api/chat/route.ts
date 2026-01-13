@@ -35,9 +35,10 @@ import {
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import { convertToUIMessages, generateUUID, getTextFromMessage } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
+import { analyze } from "@/lib/steertrue";
 
 export const maxDuration = 60;
 
@@ -155,6 +156,19 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
+    // Extract last user message for SteerTrue analysis
+    const lastUserMessage = uiMessages.filter(m => m.role === 'user').pop();
+    const messageText = lastUserMessage ? getTextFromMessage(lastUserMessage) : '';
+
+    // Call SteerTrue API for governance (before streaming starts)
+    const governance = await analyze({
+      message: messageText,
+      user_id: session.user.id,
+      session_id: null, // TODO: Extract from previous response headers in Stage 1.2
+      source: 'chat-web',
+      project: 'steertrue-chat'
+    });
+
     const stream = createUIMessageStream({
       // Pass original messages for tool approval continuation
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
@@ -171,9 +185,14 @@ export async function POST(request: Request) {
           selectedChatModel.includes("reasoning") ||
           selectedChatModel.includes("thinking");
 
+        // Merge SteerTrue system prompt with existing system prompt
+        const mergedSystemPrompt = governance.system_prompt
+          ? `${governance.system_prompt}\n\n${systemPrompt({ selectedChatModel, requestHints })}`
+          : systemPrompt({ selectedChatModel, requestHints });
+
         const result = streamText({
           model: getLanguageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          system: mergedSystemPrompt,
           messages: await convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
           experimental_activeTools: isReasoningModel
@@ -266,6 +285,13 @@ export async function POST(request: Request) {
 
     const streamContext = getStreamContext();
 
+    // SteerTrue governance headers
+    const headers = new Headers({
+      'X-Session-Id': governance.session_id,
+      'X-Blocks-Injected': governance.blocks_injected.join(','),
+      'X-Total-Tokens': String(governance.total_tokens),
+    });
+
     if (streamContext) {
       try {
         const resumableStream = await streamContext.resumableStream(
@@ -273,14 +299,14 @@ export async function POST(request: Request) {
           () => stream.pipeThrough(new JsonToSseTransformStream())
         );
         if (resumableStream) {
-          return new Response(resumableStream);
+          return new Response(resumableStream, { headers });
         }
       } catch (error) {
         console.error("Failed to create resumable stream:", error);
       }
     }
 
-    return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+    return new Response(stream.pipeThrough(new JsonToSseTransformStream()), { headers });
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");
 
