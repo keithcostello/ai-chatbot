@@ -3,8 +3,11 @@ import {
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 import { isTestEnvironment } from "../constants";
-import { createDirectAnthropicModel } from "./anthropic-direct";
+
+// Log initialization
+console.log('[providers] Initializing with ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? `present (${process.env.ANTHROPIC_API_KEY.length} chars)` : 'MISSING');
 
 const THINKING_SUFFIX_REGEX = /-thinking$/;
 
@@ -52,27 +55,29 @@ export function getLanguageModel(modelId: string) {
   if (isReasoningModel) {
     const baseModelId = modelId.replace(THINKING_SUFFIX_REGEX, "");
     const anthropicModelId = mapToAnthropicModel(baseModelId);
+    console.log('[providers] Creating reasoning model:', anthropicModelId);
 
     return wrapLanguageModel({
-      model: createDirectAnthropicModel(anthropicModelId),
+      model: anthropic(anthropicModelId),
       middleware: extractReasoningMiddleware({ tagName: "thinking" }),
     });
   }
 
   const anthropicModelId = mapToAnthropicModel(modelId);
-  return createDirectAnthropicModel(anthropicModelId);
+  console.log('[providers] Creating model:', anthropicModelId);
+  return anthropic(anthropicModelId);
 }
 
 export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
-  return createDirectAnthropicModel("claude-3-haiku-20240307");
+  return anthropic("claude-3-haiku-20240307");
 }
 
 export function getArtifactModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("artifact-model");
   }
-  return createDirectAnthropicModel("claude-3-haiku-20240307");
+  return anthropic("claude-3-haiku-20240307");
 }
