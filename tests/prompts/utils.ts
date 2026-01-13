@@ -1,4 +1,4 @@
-import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import type { LanguageModelV1StreamPart } from "ai";
 
 const mockUsage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
@@ -8,8 +8,8 @@ const mockUsage = {
 export function getResponseChunksByPrompt(
   _prompt: unknown,
   includeReasoning = false
-): LanguageModelV3StreamPart[] {
-  const chunks: LanguageModelV3StreamPart[] = [];
+): LanguageModelV1StreamPart[] {
+  const chunks: LanguageModelV1StreamPart[] = [];
 
   if (includeReasoning) {
     chunks.push(
