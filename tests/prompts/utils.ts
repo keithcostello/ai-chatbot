@@ -1,4 +1,5 @@
-import type { LanguageModelV1StreamPart } from "ai";
+// AI SDK v6 doesn't export LanguageModelV1StreamPart, use any
+type StreamPart = any;
 
 const mockUsage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
@@ -8,8 +9,8 @@ const mockUsage = {
 export function getResponseChunksByPrompt(
   _prompt: unknown,
   includeReasoning = false
-): LanguageModelV1StreamPart[] {
-  const chunks: LanguageModelV1StreamPart[] = [];
+): StreamPart[] {
+  const chunks: StreamPart[] = [];
 
   if (includeReasoning) {
     chunks.push(
