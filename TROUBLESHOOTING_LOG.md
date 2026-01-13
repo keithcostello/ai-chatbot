@@ -134,6 +134,7 @@ data: {"type":"text-delta","id":"0","delta":"Hello! How can I assist you today?"
 2. Schema validation errors (400) can mask deeper issues
 3. AI SDK v5/6 requires providers to implement v2 specification
 4. `railway up --detach` needed to deploy changes (git push alone doesn't auto-deploy)
+5. User must select "Claude" model in UI for chat to work - default model selection may not be obvious
 
 ## Files Involved
 - `lib/ai/anthropic-direct.ts` - Direct Anthropic SDK wrapper
