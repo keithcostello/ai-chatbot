@@ -6,6 +6,11 @@ import {
 } from "ai";
 import { isTestEnvironment } from "../constants";
 
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('WARNING: ANTHROPIC_API_KEY is not set!');
+}
+console.log('Anthropic provider initialized with API key:', process.env.ANTHROPIC_API_KEY ? 'present (length: ' + process.env.ANTHROPIC_API_KEY.length + ')' : 'MISSING');
+
 const anthropic = createAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
