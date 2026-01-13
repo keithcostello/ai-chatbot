@@ -24,19 +24,23 @@ export async function proxy(request: NextRequest) {
   });
 
   if (!token) {
-    // Get external URL from headers (Railway sets these) or fallback to AUTH_URL
-    const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || process.env.AUTH_URL?.replace(/^https?:\/\//, '');
+    let externalBaseUrl: string;
 
-    // Construct the external URL
-    const externalUrl = host ? `${protocol}://${host}${pathname}` : request.url;
+    if (process.env.AUTH_URL) {
+      // Prioritize AUTH_URL env variable (most reliable for Railway)
+      externalBaseUrl = process.env.AUTH_URL.replace(/\/$/, ''); // Remove trailing slash
+    } else {
+      // Fallback to headers
+      const protocol = request.headers.get('x-forwarded-proto') || 'https';
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+      externalBaseUrl = host ? `${protocol}://${host}` : request.nextUrl.origin;
+    }
+
+    const externalUrl = `${externalBaseUrl}${pathname}`;
     const redirectUrl = encodeURIComponent(externalUrl);
 
-    // Use the external base URL for the redirect
-    const baseUrl = host ? `${protocol}://${host}` : request.url;
-
     return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, baseUrl)
+      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, externalBaseUrl)
     );
   }
 
