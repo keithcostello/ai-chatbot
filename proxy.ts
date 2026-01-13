@@ -24,10 +24,19 @@ export async function proxy(request: NextRequest) {
   });
 
   if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
+    // Get external URL from headers (Railway sets these) or fallback to AUTH_URL
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || process.env.AUTH_URL?.replace(/^https?:\/\//, '');
+
+    // Construct the external URL
+    const externalUrl = host ? `${protocol}://${host}${pathname}` : request.url;
+    const redirectUrl = encodeURIComponent(externalUrl);
+
+    // Use the external base URL for the redirect
+    const baseUrl = host ? `${protocol}://${host}` : request.url;
 
     return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url)
+      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, baseUrl)
     );
   }
 
