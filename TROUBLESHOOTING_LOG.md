@@ -110,6 +110,31 @@ The official provider should:
 
 **Deploying now...**
 
+### Deploy Note (2026-01-13T23:22:00Z)
+Git push alone doesn't auto-deploy. Triggered manual deploy with `railway up --detach`.
+Build logs: https://railway.com/project/7e819fb2-6401-4390-be5f-d66ede223933/service/9b6d784f-8ac2-487d-9833-9ee1388058e0
+
+## SUCCESS! (2026-01-13T23:30:00Z)
+
+Chat API now working with full SteerTrue governance!
+
+**Test Response:**
+```
+data: {"type":"text-delta","id":"0","delta":"**[SteerTrue: L1/core_identity, L1/framework_container, L1/global_ethics, L2/proof_enforcement, L3/strategic_partner | 67 | 153ms]**\n\n"}
+data: {"type":"text-delta","id":"0","delta":"Hello! How can I assist you today?"}
+```
+
+**What Fixed It:**
+- Changed from custom `anthropic-direct.ts` (v1 spec) to official `@ai-sdk/anthropic` provider (v2 spec)
+- The official provider reads ANTHROPIC_API_KEY automatically
+- AI SDK 5/6 requires specification version v2 - custom providers must implement this
+
+**Lessons Learned:**
+1. Always check Railway logs for actual error messages
+2. Schema validation errors (400) can mask deeper issues
+3. AI SDK v5/6 requires providers to implement v2 specification
+4. `railway up --detach` needed to deploy changes (git push alone doesn't auto-deploy)
+
 ## Files Involved
 - `lib/ai/anthropic-direct.ts` - Direct Anthropic SDK wrapper
 - `lib/ai/providers.ts` - Model provider selection
