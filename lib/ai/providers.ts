@@ -1,19 +1,10 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   customProvider,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
-
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('WARNING: ANTHROPIC_API_KEY is not set!');
-}
-console.log('Anthropic provider initialized with API key:', process.env.ANTHROPIC_API_KEY ? 'present (length: ' + process.env.ANTHROPIC_API_KEY.length + ')' : 'MISSING');
-
-const anthropic = createAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { createDirectAnthropicModel } from "./anthropic-direct";
 
 const THINKING_SUFFIX_REGEX = /-thinking$/;
 
@@ -63,25 +54,25 @@ export function getLanguageModel(modelId: string) {
     const anthropicModelId = mapToAnthropicModel(baseModelId);
 
     return wrapLanguageModel({
-      model: anthropic(anthropicModelId),
+      model: createDirectAnthropicModel(anthropicModelId),
       middleware: extractReasoningMiddleware({ tagName: "thinking" }),
     });
   }
 
   const anthropicModelId = mapToAnthropicModel(modelId);
-  return anthropic(anthropicModelId);
+  return createDirectAnthropicModel(anthropicModelId);
 }
 
 export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
-  return anthropic("claude-3-haiku-20240307");
+  return createDirectAnthropicModel("claude-3-haiku-20240307");
 }
 
 export function getArtifactModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("artifact-model");
   }
-  return anthropic("claude-3-haiku-20240307");
+  return createDirectAnthropicModel("claude-3-haiku-20240307");
 }
