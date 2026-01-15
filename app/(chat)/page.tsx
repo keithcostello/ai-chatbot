@@ -24,16 +24,20 @@ async function NewChatPage() {
     return (
       <>
         <div className="flex h-dvh">
-          <Chat
-            autoResume={false}
-            id={id}
-            initialChatModel={DEFAULT_CHAT_MODEL}
-            initialMessages={[]}
-            initialVisibilityType="private"
-            isReadonly={false}
-            key={id}
-          />
-          <RightPanel title="Block Settings">
+          <RightPanel
+            title="Block Settings"
+            mainContent={
+              <Chat
+                autoResume={false}
+                id={id}
+                initialChatModel={DEFAULT_CHAT_MODEL}
+                initialMessages={[]}
+                initialVisibilityType="private"
+                isReadonly={false}
+                key={id}
+              />
+            }
+          >
             <BlockSettingsPanel />
           </RightPanel>
         </div>
@@ -45,16 +49,20 @@ async function NewChatPage() {
   return (
     <>
       <div className="flex h-dvh">
-        <Chat
-          autoResume={false}
-          id={id}
-          initialChatModel={modelIdFromCookie.value}
-          initialMessages={[]}
-          initialVisibilityType="private"
-          isReadonly={false}
-          key={id}
-        />
-        <RightPanel title="Block Settings">
+        <RightPanel
+          title="Block Settings"
+          mainContent={
+            <Chat
+              autoResume={false}
+              id={id}
+              initialChatModel={modelIdFromCookie.value}
+              initialMessages={[]}
+              initialVisibilityType="private"
+              isReadonly={false}
+              key={id}
+            />
+          }
+        >
           <BlockSettingsPanel />
         </RightPanel>
       </div>
