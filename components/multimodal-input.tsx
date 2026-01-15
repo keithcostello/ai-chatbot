@@ -68,6 +68,7 @@ function PureMultimodalInput({
   selectedVisibilityType,
   selectedModelId,
   onModelChange,
+  selectedFile,
 }: {
   chatId: string;
   input: string;
@@ -83,6 +84,7 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
+  selectedFile?: { path: string; content?: string } | null;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -147,6 +149,12 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.pushState({}, "", `/chat/${chatId}`);
 
+    // Build message text with file context if available
+    let messageText = input;
+    if (selectedFile?.content && selectedFile?.path) {
+      messageText = `[File context: ${selectedFile.path}]\n\`\`\`\n${selectedFile.content}\n\`\`\`\n\n${input}`;
+    }
+
     sendMessage({
       role: "user",
       parts: [
@@ -158,7 +166,7 @@ function PureMultimodalInput({
         })),
         {
           type: "text",
-          text: input,
+          text: messageText,
         },
       ],
     });
@@ -181,6 +189,7 @@ function PureMultimodalInput({
     width,
     chatId,
     resetHeight,
+    selectedFile,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -421,6 +430,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (!equal(prevProps.selectedFile, nextProps.selectedFile)) {
       return false;
     }
 

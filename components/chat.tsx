@@ -39,6 +39,7 @@ export function Chat({
   initialVisibilityType,
   isReadonly,
   autoResume,
+  selectedFile,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -46,6 +47,7 @@ export function Chat({
   initialVisibilityType: VisibilityType;
   isReadonly: boolean;
   autoResume: boolean;
+  selectedFile?: { path: string; content?: string } | null;
 }) {
   const router = useRouter();
 
@@ -233,6 +235,7 @@ export function Chat({
               setMessages={setMessages}
               status={status}
               stop={stop}
+              selectedFile={selectedFile}
             />
           )}
         </div>
