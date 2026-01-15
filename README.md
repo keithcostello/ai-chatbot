@@ -33,6 +33,10 @@
   - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
 - [Auth.js](https://authjs.dev)
   - Simple and secure authentication
+- SteerTrue Integration
+  - Collapsible right panel for governance block settings
+  - Real-time display of block metadata, triggers, and constraints
+  - Read-only view of Strategic Partner block configuration
 
 ## Model Providers
 
@@ -69,3 +73,42 @@ pnpm dev
 ```
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
+
+## SteerTrue Right Panel Feature
+
+This application includes a collapsible right panel that displays SteerTrue governance block settings in real-time.
+
+### Components
+
+**RightPanel** (`components/panels/RightPanel.tsx`)
+- Reusable collapsible panel component
+- Smooth toggle animations
+- Configurable title and default state
+
+**BlockSettingsPanel** (`components/panels/BlockSettingsPanel.tsx`)
+- Displays Strategic Partner block configuration
+- Shows block metadata, triggers, decay settings
+- Identity and constraints visualization
+
+### Testing
+
+For detailed testing instructions, see [FEATURE_TEST.md](./FEATURE_TEST.md).
+
+**Live Demo:** https://steertrue-chat-dev-sandbox.up.railway.app
+
+### Key Features
+
+- **Toggle Button:** Click the button on the panel edge to collapse/expand
+- **Block Metadata:** View layer, ID, name, version, and description
+- **Triggers:** See all trigger keywords for block activation
+- **Decay Settings:** Check decay status and preset configuration
+- **Identity & Constraints:** Review role, scope, and behavioral rules
+
+### Known Limitations
+
+- Read-only display (no editing capability)
+- Fixed width (320px)
+- Single block view (Strategic Partner block only)
+- Static data source (no dynamic API connection)
+
+For full details on testing procedures and limitations, refer to [FEATURE_TEST.md](./FEATURE_TEST.md).
