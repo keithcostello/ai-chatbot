@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
+import { RightPanel } from "@/components/panels/RightPanel";
+import { BlockSettingsPanel } from "@/components/panels/BlockSettingsPanel";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateUUID } from "@/lib/utils";
 
@@ -21,15 +23,20 @@ async function NewChatPage() {
   if (!modelIdFromCookie) {
     return (
       <>
-        <Chat
-          autoResume={false}
-          id={id}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialMessages={[]}
-          initialVisibilityType="private"
-          isReadonly={false}
-          key={id}
-        />
+        <div className="flex h-dvh">
+          <Chat
+            autoResume={false}
+            id={id}
+            initialChatModel={DEFAULT_CHAT_MODEL}
+            initialMessages={[]}
+            initialVisibilityType="private"
+            isReadonly={false}
+            key={id}
+          />
+          <RightPanel title="Block Settings">
+            <BlockSettingsPanel />
+          </RightPanel>
+        </div>
         <DataStreamHandler />
       </>
     );
@@ -37,15 +44,20 @@ async function NewChatPage() {
 
   return (
     <>
-      <Chat
-        autoResume={false}
-        id={id}
-        initialChatModel={modelIdFromCookie.value}
-        initialMessages={[]}
-        initialVisibilityType="private"
-        isReadonly={false}
-        key={id}
-      />
+      <div className="flex h-dvh">
+        <Chat
+          autoResume={false}
+          id={id}
+          initialChatModel={modelIdFromCookie.value}
+          initialMessages={[]}
+          initialVisibilityType="private"
+          isReadonly={false}
+          key={id}
+        />
+        <RightPanel title="Block Settings">
+          <BlockSettingsPanel />
+        </RightPanel>
+      </div>
       <DataStreamHandler />
     </>
   );
