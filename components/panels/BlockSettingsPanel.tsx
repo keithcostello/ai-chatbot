@@ -1,8 +1,8 @@
 'use client';
 
 import { strategicPartnerBlock } from '@/data/strategicPartnerBlock';
-import { IdentityPanel } from '@/components/settings/IdentityPanel';
-import { ConstraintsPanel } from '@/components/settings/ConstraintsPanel';
+import IdentityPanel from '@/components/settings/IdentityPanel';
+import ConstraintsPanel from '@/components/settings/ConstraintsPanel';
 
 export function BlockSettingsPanel() {
   if (!strategicPartnerBlock) {
