@@ -373,6 +373,8 @@ DEV must still submit checkpoints for N/A phases with content: "N/A per USER dir
 
 **All browser testing uses `agent-browser` CLI for AI-native automation.**
 
+**Detailed Process:** Read `.claude/docs/BROWSER_VERIFICATION_PROCESS.md` for complete verification requirements including checkpoint template, anti-patterns, and escalation paths.
+
 Installation (if not present):
 ```bash
 npm install -g agent-browser

@@ -331,6 +331,7 @@ WORKFLOW:
           - "agent-browser screenshot [pm-evidence-path]"
           - "Compare PM screenshot to DEV screenshot"
           - "If mismatch → REJECT checkpoint"
+        detailed_process: ".claude/docs/BROWSER_VERIFICATION_PROCESS.md"
       violation: "Proceeding to Phase 6 without human UAT response = Framework breach = Grade F"
       ui_violation: "Approving UI checkpoint without agent-browser verification = REJECTED"
 

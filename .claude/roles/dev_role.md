@@ -350,6 +350,7 @@ WORKFLOW:
           - "agent-browser fill/click/select as needed"
           - "agent-browser screenshot [evidence-path]"
           - "agent-browser close"
+        detailed_process: ".claude/docs/BROWSER_VERIFICATION_PROCESS.md"
 
     - phase: 6
       name: "Documentation"
