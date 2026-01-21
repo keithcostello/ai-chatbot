@@ -211,6 +211,26 @@ Use `/run-sprint` to execute sprints.
 
 ---
 
+## MANDATORY Reading (Code Review)
+
+**Before ANY code review or PM approval, read:**
+
+- `.claude/sprints/ai-chatbot/PROCESS_FIX_CODE_REVIEW.md` - Why code review failed and how to fix
+- `.claude/sprints/ai-chatbot/LESSONS_LEARNED.md` - Patterns that failed in this project
+
+**Key Rules from Process Fix:**
+1. **Orchestrator MUST spawn code-reviewer agent** before PM reviews
+2. **PM cannot make claims about library behavior** without verification
+3. **All claims require citation** (e.g., "Auth.js uses X" → show source)
+4. **No guessing cookie names** - grep actual code or read docs
+
+**Example of WRONG approval (from S2.1):**
+> "Cookie name `session=` matches Auth.js convention" - FALSE, Auth.js uses `__Secure-authjs.session-token`
+
+This false claim caused 7+ UAT failures.
+
+---
+
 ## Zero Tolerance
 
 **Violations = Immediate termination:**
