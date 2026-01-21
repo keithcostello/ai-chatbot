@@ -283,13 +283,17 @@ WORKFLOW:
     - phase: 3
       name: "Execution"
       action: "Review implementation checkpoints"
+      methodology: "Walking Skeleton - verify DEV built skeleton first, then added flesh"
+      methodology_ref: ".claude/docs/WALKING_SKELETON_METHODOLOGY.md"
       pm_duties:
+        - "Verify walking skeleton was built and verified before flesh"
         - "Verify files in correct locations"
         - "Verify code matches phase scope"
         - "Verify tests written and passing"
         - "Verify evidence includes actual terminal output"
-      reject_if: "Files in wrong location"
+      reject_if: "Files in wrong location OR no skeleton verification evidence"
       verification:
+        - "Walking skeleton evidence shows end-to-end worked before flesh added"
         - "Files in correct locations (steertrue/, tests/)"
         - "Code matches phase scope (not ahead, not behind)"
         - "Tests written and passing"

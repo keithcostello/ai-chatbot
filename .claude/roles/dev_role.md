@@ -313,7 +313,10 @@ WORKFLOW:
       name: "Execution"
       dev_action: "Create source and test files"
       deliverables: ["source files", "test files"]
+      methodology: "Walking Skeleton - build minimal end-to-end first, add flesh incrementally"
+      methodology_ref: ".claude/docs/WALKING_SKELETON_METHODOLOGY.md"
       checklist:
+        - "Walking skeleton verified end-to-end before adding flesh"
         - "Code complete for phase scope"
         - "Tests written for new code"
         - "All tests passing"

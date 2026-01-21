@@ -55,6 +55,22 @@ drizzle/              # Migration files (generated)
 3. **Auth.js Patterns** - Follow official Auth.js v5 documentation
 4. **Drizzle Patterns** - Use Drizzle ORM conventions
 5. **Pattern Search First** - Before proposing any fix, search codebase for existing patterns
+6. **Walking Skeleton** - Build minimal end-to-end first, add flesh incrementally
+
+---
+
+## Walking Skeleton Methodology
+
+**MANDATORY for all feature implementation and debugging.**
+
+Build the thinnest possible end-to-end slice first, then add flesh:
+
+1. **Skeleton** - Minimal path through all layers (UI → API → Logic → DB → Response)
+2. **Verify** - Deploy and test skeleton works end-to-end before adding features
+3. **Flesh** - Add capabilities one at a time, testing after each addition
+4. **Debug** - If stuck, strip back to skeleton and binary search for failure
+
+**Full process:** `.claude/docs/WALKING_SKELETON_METHODOLOGY.md`
 
 ---
 
