@@ -38,9 +38,9 @@ export default auth((req) => {
   // Session is available on req.auth (Auth.js v5 pattern)
   const isAuthenticated = !!req.auth;
 
-  // If authenticated and trying to access auth routes, redirect to home
+  // If authenticated and trying to access auth routes, redirect to dashboard
   if (isAuthenticated && authRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL('/', req.url));
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // If not authenticated and trying to access protected routes

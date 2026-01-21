@@ -37,6 +37,18 @@ export const authConfig: NextAuthConfig = {
     signIn: '/login',
   },
   callbacks: {
+    // Redirect callback - ensure OAuth redirects to dashboard
+    async redirect({ url, baseUrl }) {
+      // After OAuth, redirect to dashboard by default
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      // Default fallback - redirect to dashboard for authenticated users
+      return `${baseUrl}/dashboard`;
+    },
     // JWT callback for Edge - just pass through
     async jwt({ token, user }) {
       if (user) {

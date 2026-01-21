@@ -18,7 +18,7 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     setError('');
     try {
-      await signIn('google', { callbackUrl: '/' });
+      await signIn('google', { callbackUrl: '/dashboard' });
     } catch {
       setError('Failed to sign up with Google');
       setIsGoogleLoading(false);

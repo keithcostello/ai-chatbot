@@ -18,7 +18,7 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     setError('');
     try {
-      await signIn('google', { callbackUrl: '/' });
+      await signIn('google', { callbackUrl: '/dashboard' });
     } catch {
       setError('Failed to sign in with Google');
       setIsGoogleLoading(false);
@@ -49,7 +49,7 @@ export default function LoginPage() {
       }
 
       // Success - redirect to dashboard
-      router.push('/');
+      router.push('/dashboard');
       router.refresh(); // Refresh to update auth state
     } catch {
       // GENERIC error - no specific information

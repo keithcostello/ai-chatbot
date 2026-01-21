@@ -69,6 +69,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: '/login',
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // After OAuth, redirect to dashboard by default
+      // If callbackUrl was specified in signIn(), use that
+      // But ensure we don't redirect to external URLs
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      // Default fallback - redirect to dashboard for authenticated users
+      return `${baseUrl}/dashboard`;
+    },
     async signIn({ user, account }) {
       // Handle Google OAuth sign-in
       if (account?.provider === 'google') {
