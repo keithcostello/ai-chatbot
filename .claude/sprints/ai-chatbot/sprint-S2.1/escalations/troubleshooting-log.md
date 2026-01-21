@@ -31,16 +31,36 @@ Middleware in Next.js runs in the **Edge Runtime** by default. These Node.js-spe
 - curl response: `HTTP/1.1 500 Internal Server Error`
 - API routes have `export const runtime = 'nodejs';` but middleware does not
 
-**Fix Applied:** [PENDING - Need to implement]
+**Fix Applied:** Option B - Split auth configuration
 
-**Options:**
-1. **Option A:** Add `export const runtime = 'nodejs';` to middleware.ts - This forces middleware to run in Node.js runtime instead of Edge
-2. **Option B:** Split auth configuration to separate Edge-compatible exports from Node.js-only code
-3. **Option C:** Create a simpler middleware that doesn't import the full auth config
+**Selected Solution:** Created Edge-compatible `lib/auth.config.ts` that contains only configuration that can run in Edge Runtime (no bcrypt, no database imports). Updated `middleware.ts` to use this config instead of the full `lib/auth.ts`.
 
-**Selected Solution:** Option A - Force Node.js runtime in middleware
+**Files Changed:**
+1. Created `lib/auth.config.ts` - Edge-compatible auth configuration
+2. Modified `middleware.ts` - Import from `auth.config.ts` instead of `auth.ts`
 
-**Result:** [PENDING]
+**Result:** FIXED
+
+**Verification (2026-01-21T18:20:43Z):**
+```bash
+# Health check - SUCCESS
+curl -s https://steertrue-chat-dev-sandbox.up.railway.app/api/health
+{"status":"ok","timestamp":"2026-01-21T18:20:36.945Z"}
+
+# Signup page - SUCCESS (HTTP 200)
+curl -s -I https://steertrue-chat-dev-sandbox.up.railway.app/signup
+HTTP/1.1 200 OK
+
+# Login page - SUCCESS (HTTP 200)
+curl -s -I https://steertrue-chat-dev-sandbox.up.railway.app/login
+HTTP/1.1 200 OK
+
+# Railway logs - No errors
+Starting Container
+> next start
+...
+✓ Ready in 796ms
+```
 
 ---
 
@@ -49,3 +69,6 @@ Middleware in Next.js runs in the **Edge Runtime** by default. These Node.js-spe
 - Local build succeeds because the build step doesn't execute the Edge Runtime code
 - The error only manifests at runtime when Railway tries to serve requests
 - This is a known Auth.js v5 compatibility issue when using database adapters with Edge middleware
+- The solution follows Auth.js v5 best practice: separate Edge-compatible config from Node.js-specific code
+- Full `auth.ts` is still used by API routes (which run in Node.js runtime)
+- `auth.config.ts` is used by middleware (which runs in Edge runtime)
