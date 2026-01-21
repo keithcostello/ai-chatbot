@@ -7,40 +7,45 @@
 - **Branch:** dev-sprint-S2.1
 
 ## Current State
-- **Phase:** EXECUTION (scope change - Google OAuth)
+- **Phase:** EXECUTION (bug fix in progress)
 - **Checkpoint:** 3
-- **Iteration:** 8/20
-- **Position:** 3.5
+- **Iteration:** 9/20
+- **Position:** 3.6
 
-## Scope Change
-- **2026-01-21T08:29:00.963Z:** Google OAuth added to scope (was missed in original planning)
-- UAT Gate paused, returning to execution
-- Full UAT re-run required after Google OAuth implementation
+## Bug Fix In Progress
+- **2026-01-21:** Root cause confirmed - hasSessionCookie() cannot read HttpOnly cookies
+- **Status:** Fix identified, ready to implement
+- **Files to modify:** app/page.tsx, app/dashboard/page.tsx
 
 ## Circuit Breaker Status
-- Total iterations: 8/20
+- Total iterations: 9/20
 - Rejections this checkpoint: 0/3
 
 ## Quality Metrics
 - **Email/password auth:** COMPLETE (verified on Railway)
-- **Google OAuth:** PENDING (awaiting credentials)
+- **Google OAuth:** COMPLETE (session exists, verified via /api/auth/session)
 - **Test coverage:** API endpoints verified (curl + agent-browser)
+- **Dashboard bug:** IDENTIFIED (hasSessionCookie() fix needed)
 - **Linting compliance:** pass
 - **Security scan:** pass (SC-5, SC-6 verified)
 - **Code review:** pass (PM approved Day 1 + Day 2)
 
-## Blocking Item
-- **Google OAuth credentials needed**
-- User following setup guide: `handoffs/google-oauth-setup-guide.md`
-- Required: AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET
+## Critical Finding
+- **Bug:** `hasSessionCookie()` in app/page.tsx and app/dashboard/page.tsx
+- **Symptom:** Dashboard stuck on "Loading..." for authenticated users
+- **Root Cause:** HttpOnly cookies are NOT visible to JavaScript via document.cookie
+- **Fix:** Remove hasSessionCookie() checks, always call /api/auth/me
 
 ## Last Action
-- 2026-01-21T09:04:14.174Z: Logo + tagline deployed, UAT Gate ready
+- 2026-01-21: User confirmed bug via manual testing
+  - Standard login: WORKS (test@example.com verified)
+  - Google OAuth: WORKS (session shows Keith Costello)
+  - hasSessionCookie(): Returns FALSE (expected - HttpOnly cookies invisible to JS)
 
 ## Next Action
-- Human UAT: Test all authentication flows on Railway URL
-- Approve: `Sprint-S2.1 UAT: PASS`
-- Reject: `Sprint-S2.1 UAT: FAIL - [reason]`
+- Implement fix: Remove hasSessionCookie() from page.tsx and dashboard/page.tsx
+- Build and deploy to Railway
+- Verify fix on deployed URL
 
 ## History
 - 2026-01-21T06:51:21.552Z: Sprint S2.1 orchestration started
@@ -56,3 +61,7 @@
 - 2026-01-21T08:29:00.963Z: **SCOPE CHANGE** - Google OAuth required
 - 2026-01-21T08:35:00.000Z: Google OAuth setup guide created
 - 2026-01-21T08:40:00.000Z: Documentation updated (CONTEXT, PROMPT, TRACKER)
+- 2026-01-21: **BUG CONFIRMED** - hasSessionCookie() cannot read HttpOnly cookies
+- 2026-01-21: Standard login verified WORKING
+- 2026-01-21: Google OAuth verified WORKING (session exists)
+- 2026-01-21: Root cause identified, fix ready to implement

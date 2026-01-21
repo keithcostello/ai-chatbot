@@ -1,3 +1,9 @@
+<!-- AI CONTEXT
+WHAT: Complete test plan with 22 tests that prove authentication functionality works for real users.
+WHY: Previous tests only verified HTTP status codes. This plan verifies actual browser user experience.
+HOW: Execute each test in order using agent-browser. Document results with screenshots. All tests must pass before UAT.
+-->
+
 # Comprehensive Test Plan - Sprint S2.1
 
 **Date:** 2026-01-21

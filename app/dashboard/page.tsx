@@ -11,12 +11,6 @@ interface User {
   displayName: string | null;
 }
 
-// Helper to check if session cookie exists (client-side)
-function hasSessionCookie(): boolean {
-  if (typeof document === 'undefined') return false;
-  return document.cookie.split(';').some(c => c.trim().startsWith('session='));
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -24,13 +18,9 @@ export default function DashboardPage() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check authentication by calling server API
+    // Note: Always call API - HttpOnly cookies are invisible to JS but server can read them
     const checkAuth = async () => {
-      // Quick check: if no session cookie, redirect immediately (no API call needed)
-      if (!hasSessionCookie()) {
-        router.push('/login');
-        return;
-      }
-
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {

@@ -1,3 +1,9 @@
+<!-- AI CONTEXT
+WHAT: Running log of all issues encountered during Sprint S2.1 with investigations and resolutions.
+WHY: Tracks what was tried, what worked, and what didn't for future reference and debugging.
+HOW: Add new issues chronologically. Include investigation steps, root cause, fix applied, and verification.
+-->
+
 # Troubleshooting Log - Sprint S2.1 Google OAuth
 
 ## Issue Timeline
@@ -140,3 +146,200 @@ agent-browser --session verify open https://steertrue-chat-dev-sandbox.up.railwa
 - The solution follows Auth.js v5 best practice: separate Edge-compatible config from Node.js-specific code
 - Full `auth.ts` is still used by API routes (which run in Node.js runtime)
 - `auth.config.ts` is used by middleware (which runs in Edge runtime)
+
+---
+
+## Issue 2: 2026-01-21T21:36:00Z - Test Account Creation
+
+**Problem:** User needed a test account for https://steertrue-chat-dev-sandbox.up.railway.app/test-login.html
+
+**Investigation:**
+
+1. First attempted with password containing special character `!`:
+   ```bash
+   curl -s -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/signup \
+     -H "Content-Type: application/json" \
+     -d '{"email": "test@example.com", "password": "TestPass123!", "confirmPassword": "TestPass123!"}'
+   ```
+   Response: `{"error":"An error occurred during signup","code":"INTERNAL_ERROR"}`
+
+2. Checked Railway logs - found JSON parsing error:
+   ```
+   Signup error: SyntaxError: Bad escaped character in JSON at position 55 (line 1 column 56)
+   ```
+
+3. Retried with password without special characters:
+   ```bash
+   curl -s -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/signup \
+     -H "Content-Type: application/json" \
+     -d '{"email": "test@example.com", "password": "TestPass1234", "confirmPassword": "TestPass1234"}'
+   ```
+   Response: `{"user":{"id":"f4a1ee39-86bf-4fd1-926a-bb6af356648e","email":"test@example.com","role":"user","displayName":null,"createdAt":"2026-01-21T21:36:43.674Z"}}`
+
+**Root Cause:** Special characters in passwords (like `!`) cause JSON parsing issues in the signup endpoint. This appears to be a bug in how the request body is being parsed - likely related to shell escaping or the JSON parser.
+
+**Result:** RESOLVED (with workaround)
+
+**Test Account Created:**
+| Field | Value |
+|-------|-------|
+| Email | `test@example.com` |
+| Password | `TestPass1234` |
+| User ID | `f4a1ee39-86bf-4fd1-926a-bb6af356648e` |
+| Created At | 2026-01-21T21:36:43.674Z |
+
+**Known Issue:** Special characters in passwords may cause signup to fail. This should be investigated as a potential bug in a future sprint.
+
+---
+
+## Issue 3: 2026-01-21T21:36:00Z - Google OAuth Configuration Error
+
+**Problem:** User sees configuration error when attempting Google OAuth sign-in:
+- URL: `https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/error?error=Configuration`
+- Message: "There is a problem with the server configuration"
+
+**Investigation:**
+
+1. Checked Railway logs:
+   ```
+   [auth][error] UnknownAction: Unsupported action. Read more at https://errors.authjs.dev#unknownaction
+   ```
+
+2. Verified environment variables are present:
+   ```bash
+   railway variables
+   ```
+
+   | Variable | Status |
+   |----------|--------|
+   | AUTH_GOOGLE_ID | SET (251588353428-...) |
+   | AUTH_GOOGLE_SECRET | SET (GOCSPX-...) |
+   | AUTH_SECRET | SET |
+   | AUTH_URL | SET (https://steertrue-chat-dev-sandbox.up.railway.app) |
+   | NEXTAUTH_URL | SET (https://steertrue-chat-dev-sandbox.up.railway.app) |
+   | AUTH_TRUST_HOST | SET (true) |
+
+3. Checked Auth.js providers endpoint:
+   ```bash
+   curl -s "https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/providers"
+   ```
+   Response shows Google provider is configured:
+   ```json
+   {
+     "google": {
+       "id": "google",
+       "name": "Google",
+       "type": "oidc",
+       "signinUrl": "https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/signin/google",
+       "callbackUrl": "https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/callback/google"
+     }
+   }
+   ```
+
+4. Tested signin endpoint with CSRF token via curl - returns `MissingCSRF` error:
+   - This is expected - OAuth flows require browser-based CSRF token handling
+   - The CSRF token must match between the cookie and form submission
+   - curl cannot properly simulate this browser behavior
+
+**Root Cause Analysis:**
+
+The `UnknownAction` error in the logs suggests that Auth.js is receiving requests for actions it doesn't recognize. This could be caused by:
+
+1. **Google Cloud Console callback URL mismatch** - The callback URL in Google Cloud Console MUST be exactly:
+   ```
+   https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/callback/google
+   ```
+
+2. **OAuth Consent Screen not configured** - Google Cloud Console needs:
+   - OAuth consent screen configured (even in "Testing" mode)
+   - Test users added if in "Testing" mode
+   - Proper scopes (email, profile)
+
+3. **Authorized JavaScript origins not set** - Google Cloud Console needs:
+   ```
+   https://steertrue-chat-dev-sandbox.up.railway.app
+   ```
+
+**Result:** INVESTIGATION COMPLETE - Requires Google Cloud Console verification
+
+**Action Required (Human):**
+1. Log into Google Cloud Console: https://console.cloud.google.com/
+2. Go to "APIs & Services" > "Credentials"
+3. Find the OAuth 2.0 Client ID starting with `251588353428-...`
+4. Verify "Authorized redirect URIs" contains:
+   ```
+   https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/callback/google
+   ```
+5. Verify "Authorized JavaScript origins" contains:
+   ```
+   https://steertrue-chat-dev-sandbox.up.railway.app
+   ```
+6. Go to "OAuth consent screen" and verify:
+   - App is configured (Testing or Production mode)
+   - Test users are added if in Testing mode
+   - Required scopes: email, profile, openid
+
+**Note:** The Auth.js configuration in the codebase is correct (`lib/auth.ts` lines 12-15). The issue is likely in Google Cloud Console configuration.
+
+---
+
+---
+
+## Issue 4: 2026-01-21 - Dashboard Stuck on "Loading..." (HttpOnly Cookie Bug)
+
+**Problem:** Dashboard shows "Loading..." indefinitely for authenticated users. Users confirmed:
+- Standard login WORKS (test@example.com logs in successfully)
+- Google OAuth WORKS (/api/auth/session shows valid session)
+- But dashboard never loads
+
+**Investigation:**
+
+1. User tested `hasSessionCookie()` function in browser console
+2. Result: Returns `false` even when user is authenticated
+3. User checked /api/auth/me directly - returns correct user data
+
+**Root Cause:**
+
+The `hasSessionCookie()` function in `app/page.tsx` and `app/dashboard/page.tsx`:
+
+```javascript
+function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split(';').some(c => c.trim().startsWith('session='));
+}
+```
+
+**Why it fails:**
+- Auth.js sets session cookies with `httpOnly: true`
+- HttpOnly cookies are intentionally invisible to client-side JavaScript
+- `document.cookie` CANNOT access HttpOnly cookies
+- This is a SECURITY FEATURE (prevents XSS attacks from stealing session tokens)
+- Only the SERVER can read HttpOnly cookies
+
+**Evidence:**
+- `document.cookie` returns empty string or non-httpOnly cookies only
+- `/api/auth/me` returns correct user (server CAN see the cookie)
+- `/api/auth/session` shows valid Google OAuth session (Keith Costello, expires 2026-02-20)
+
+**Fix Applied:**
+
+Removed `hasSessionCookie()` from both files. Now always call `/api/auth/me` and trust server response.
+
+**Files Changed:**
+1. `app/page.tsx` - Removed hasSessionCookie() function and usage
+2. `app/dashboard/page.tsx` - Removed hasSessionCookie() function and usage
+
+**Result:** FIXED
+
+**Verification:** Build passes. Awaiting deployment verification.
+
+---
+
+## Summary Table
+
+| Issue | Status | Resolution |
+|-------|--------|------------|
+| Issue 1: Edge Runtime Error | RESOLVED | Split auth config for Edge/Node.js |
+| Issue 2: Test Account | RESOLVED | Account created with simpler password |
+| Issue 3: Google OAuth | RESOLVED | Google Cloud Console configuration fixed |
+| Issue 4: Dashboard Loading Bug | RESOLVED | Removed hasSessionCookie() - HttpOnly cookies invisible to JS |

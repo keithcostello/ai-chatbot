@@ -1,3 +1,9 @@
+<!-- AI CONTEXT
+WHAT: Detailed analysis of all UAT failures in Sprint S2.1 with root causes and fixes.
+WHY: Documents what went wrong so AI agents understand the gap between curl tests and browser reality.
+HOW: Review each failure's root cause and "What Should Have Been Done Differently" section before similar work.
+-->
+
 # FAILURE ANALYSIS - Sprint S2.1
 
 **Date:** 2026-01-21

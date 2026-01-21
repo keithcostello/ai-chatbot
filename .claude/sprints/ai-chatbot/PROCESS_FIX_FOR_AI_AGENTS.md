@@ -1,3 +1,9 @@
+<!-- AI CONTEXT
+WHAT: Critical process changes for AI agents working on frontend/UI projects.
+WHY: Sprint S2.1 had 7+ UAT failures because AI agents used curl tests instead of browser verification. This document prevents repeating those failures.
+HOW: Read entirely before starting any UI work. Follow the verification checklist for every checkpoint. Share with all AI agents in other projects.
+-->
+
 # Process Fix for AI Agents
 
 **Date:** 2026-01-21

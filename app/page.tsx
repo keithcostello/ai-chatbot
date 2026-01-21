@@ -12,12 +12,6 @@ interface User {
   displayName: string | null;
 }
 
-// Helper to check if session cookie exists (client-side)
-function hasSessionCookie(): boolean {
-  if (typeof document === 'undefined') return false;
-  return document.cookie.split(';').some(c => c.trim().startsWith('session='));
-}
-
 export default function Home() {
   const router = useRouter();
   // Start with null user - buttons render immediately, auth check updates async
@@ -26,20 +20,15 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is authenticated (non-blocking - page renders immediately)
+    // Note: Always call API - HttpOnly cookies are invisible to JS but server can read them
     const checkAuth = async () => {
-      // Only call API if session cookie exists - prevents 401 errors in console
-      if (!hasSessionCookie()) {
-        setAuthChecked(true);
-        return;
-      }
-
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
         }
-        // If not ok (401), cookie may be invalid - that's fine, user is not authenticated
+        // If not ok (401), user is not authenticated - that's fine
       } catch {
         // Network error - that's fine, user is not authenticated
       } finally {

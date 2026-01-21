@@ -97,6 +97,56 @@ Captures WHY decisions were made. Required reading for session continuity.
 - `checkpoints/checkpoint-3.md`, `checkpoint-3-day2.md`, `checkpoint-5.md`
 - `screenshots/` folder with UI evidence
 
+### Session 35 (2026-01-21) - Bug Root Cause Confirmed + Fix Ready
+
+**User Testing Results:**
+
+1. **Standard Login: WORKS**
+   - test@example.com logged in successfully
+   - Redirected to test-dashboard.html
+   - /api/auth/me returns user data correctly
+
+2. **Google OAuth: WORKS**
+   - /api/auth/session shows: Keith Costello (keith@steertrue.ai)
+   - Google session exists and is valid
+   - Expires: 2026-02-20
+
+3. **THE BUG CONFIRMED:**
+   - `hasSessionCookie()` returns FALSE even when authenticated
+   - HttpOnly cookies are NOT visible to JavaScript (correct security behavior)
+   - This is why dashboard was stuck on "Loading..."
+
+**Root Cause Analysis:**
+
+The `hasSessionCookie()` function in both `app/page.tsx` and `app/dashboard/page.tsx`:
+```javascript
+function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split(';').some(c => c.trim().startsWith('session='));
+}
+```
+
+**Why it fails:** Auth.js session cookies are set with `httpOnly: true`. HttpOnly cookies are intentionally invisible to client-side JavaScript (`document.cookie`). This is a security feature, not a bug.
+
+**Fix Identified:**
+- Remove `hasSessionCookie()` from app/page.tsx and app/dashboard/page.tsx
+- Always call /api/auth/me and trust server response
+- Server CAN see HttpOnly cookies (sent with every request)
+
+**Documentation Created:**
+- `troubleshooting-log.md` - Issue 4 documents the bug
+- `LESSONS_LEARNED.md` - L9 captures the HttpOnly cookie lesson
+
+**Current Status:**
+- Email/password auth: COMPLETE (verified working)
+- Google OAuth: COMPLETE (session exists and works)
+- Dashboard bug: ROOT CAUSE CONFIRMED, fix ready to implement
+
+**Next Steps:**
+1. Implement fix in app/page.tsx and app/dashboard/page.tsx
+2. Build and deploy to Railway
+3. Verify dashboard loads correctly for authenticated users
+
 ---
 
 ## Open Questions

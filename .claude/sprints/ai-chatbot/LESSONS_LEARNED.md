@@ -1,3 +1,9 @@
+<!-- AI CONTEXT
+WHAT: Lessons learned from sprint failures - anti-patterns to avoid and practices to follow.
+WHY: AI agents repeat the same mistakes. This document captures failures so future agents don't repeat them.
+HOW: Read KEY LESSONS and ANTI-PATTERNS before starting work. Reference REQUIRED PRACTICES during checkpoints.
+-->
+
 # LESSONS LEARNED - ai-chatbot Sprints
 
 **Created:** 2026-01-21
