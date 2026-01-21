@@ -96,6 +96,7 @@
 | ID | Issue | Severity | Status | Root Cause | Resolution | Phase |
 |----|-------|----------|--------|------------|------------|-------|
 | ISS-001 | DATABASE_URL missing from .env.local | HIGH | RESOLVED | Not configured | Used `railway variables` to get DATABASE_PUBLIC_URL | P2 |
+| ISS-005 | Home page buttons don't work, missing branding | HIGH | RESOLVED | Missing logo image, wrong tagline text. Buttons already used Link component correctly. | Added Next.js Image component for logo (/profile_image.jpg), changed tagline to "SteerTrue, Stay True." | P5-UAT |
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -75,6 +76,18 @@ export default function Home() {
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
+          {/* Logo */}
+          <div className="mb-6">
+            <Image
+              src="/profile_image.jpg"
+              alt="SteerTrue Logo"
+              width={120}
+              height={120}
+              className="mx-auto rounded-full"
+              priority
+            />
+          </div>
+
           <h1 className="text-4xl font-bold text-[#1e3a3a] mb-4">SteerTrue</h1>
 
           {user ? (
@@ -88,7 +101,7 @@ export default function Home() {
             </>
           ) : (
             <>
-              <p className="text-[#1e3a3a] mb-8">Your AI-powered conversation partner</p>
+              <p className="text-[#1e3a3a] mb-8">SteerTrue, Stay True.</p>
               <div className="space-x-4">
                 <Link
                   href="/signup"
