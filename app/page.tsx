@@ -14,11 +14,12 @@ interface User {
 
 export default function Home() {
   const router = useRouter();
+  // Start with null user - buttons render immediately, auth check updates async
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
+    // Check if user is authenticated (non-blocking - page renders immediately)
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/auth/me');
@@ -29,7 +30,7 @@ export default function Home() {
       } catch {
         // Not authenticated - that's fine
       } finally {
-        setIsLoading(false);
+        setAuthChecked(true);
       }
     };
 
@@ -48,14 +49,8 @@ export default function Home() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f4ed]">
-        <div className="text-[#1e3a3a]">Loading...</div>
-      </div>
-    );
-  }
-
+  // Render page content immediately - no loading gate
+  // Auth check happens async and will update user state when complete
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f4ed]">
       {/* Header with logout button for authenticated users */}

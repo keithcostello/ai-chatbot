@@ -64,6 +64,74 @@ Starting Container
 
 ---
 
+## Agent-Browser Verification (2026-01-21T10:24:00Z)
+
+**Purpose:** Visual verification of deployed fix using agent-browser
+
+### Signup Page Verification
+**URL:** https://steertrue-chat-dev-sandbox.up.railway.app/signup
+
+**Command:**
+```bash
+agent-browser --session verify open https://steertrue-chat-dev-sandbox.up.railway.app/signup
+```
+
+**Result:** SUCCESS - Page loads with title "SteerTrue"
+
+**Accessibility Snapshot:**
+```
+- document:
+  - img "SteerTrue Logo"
+  - heading "SteerTrue" [level=1]
+  - paragraph: SteerTrue, Stay True.
+  - heading "Create Account" [level=2]
+  - button "Sign up with Google"
+  - textbox "Email" (placeholder: you@example.com)
+  - textbox "Password" (placeholder: At least 8 characters)
+  - textbox "Confirm Password" (placeholder: Confirm your password)
+  - button "Sign Up"
+  - link "Log in" -> /login
+```
+
+**Screenshot:** `.claude/sprints/ai-chatbot/sprint-S2.1/screenshots/signup-verification.png`
+
+### Login Page Verification
+**URL:** https://steertrue-chat-dev-sandbox.up.railway.app/login
+
+**Command:**
+```bash
+agent-browser --session verify open https://steertrue-chat-dev-sandbox.up.railway.app/login
+```
+
+**Result:** SUCCESS - Page loads with title "SteerTrue"
+
+**Accessibility Snapshot:**
+```
+- document:
+  - img "SteerTrue Logo"
+  - heading "SteerTrue" [level=1]
+  - paragraph: SteerTrue, Stay True.
+  - heading "Welcome Back" [level=2]
+  - button "Sign in with Google"
+  - textbox "Email" (placeholder: you@example.com)
+  - textbox "Password" (placeholder: Enter your password)
+  - button "Log In"
+  - link "Sign up" -> /signup
+```
+
+**Screenshot:** `.claude/sprints/ai-chatbot/sprint-S2.1/screenshots/login-verification.png`
+
+### Verification Summary
+
+| Page | Status | Elements Verified |
+|------|--------|-------------------|
+| /signup | PASS | Logo, form fields, Google OAuth button, navigation link |
+| /login | PASS | Logo, form fields, Google OAuth button, navigation link |
+
+**Conclusion:** Edge Runtime fix verified successful. Both authentication pages render correctly with all form elements functional.
+
+---
+
 ## Notes
 
 - Local build succeeds because the build step doesn't execute the Edge Runtime code
