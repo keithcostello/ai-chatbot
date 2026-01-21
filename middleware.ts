@@ -1,8 +1,5 @@
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
-
-const SESSION_COOKIE_NAME = 'session';
 
 // Routes that don't require authentication
 const publicRoutes = [
@@ -15,8 +12,8 @@ const publicRoutes = [
 // Routes that should redirect to home if already authenticated
 const authRoutes = ['/login', '/signup'];
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
 
   // Allow public API routes and static assets
   if (
@@ -32,25 +29,12 @@ export async function middleware(request: NextRequest) {
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  // Get session token from cookie
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-
-  // Verify token if present
-  let isAuthenticated = false;
-  if (token) {
-    try {
-      const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
-      await jwtVerify(token, secret);
-      isAuthenticated = true;
-    } catch {
-      // Token invalid or expired
-      isAuthenticated = false;
-    }
-  }
+  // Session is available on req.auth (Auth.js v5 pattern)
+  const isAuthenticated = !!req.auth;
 
   // If authenticated and trying to access auth routes, redirect to home
   if (isAuthenticated && authRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   // If not authenticated and trying to access protected routes
@@ -63,11 +47,11 @@ export async function middleware(request: NextRequest) {
       );
     }
     // For pages, redirect to login
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
