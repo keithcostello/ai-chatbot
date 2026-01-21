@@ -101,7 +101,7 @@ Backend API: Railway steertrue-sandbox service
 
 ## UAT Policy
 
-**UAT = Visual verification on deployed Railway URL.**
+**UAT = Visual verification on deployed Railway URL using agent-browser.**
 
 | NOT Acceptable | Acceptable |
 |----------------|------------|
@@ -109,6 +109,40 @@ Backend API: Railway steertrue-sandbox service
 | "Tests pass locally" | "It shows real data from real backend" |
 | Mock data | Real data from real backend |
 | Developer verification | User-centric browser verification |
+| curl-only API tests | agent-browser UI verification |
+
+---
+
+## Browser Testing (agent-browser)
+
+**All UAT must use agent-browser for UI verification on Railway URL.**
+
+```bash
+# Navigate to deployed URL
+agent-browser open https://[railway-url]/signup
+
+# Get element refs for interaction
+agent-browser snapshot --interactive
+
+# Fill form fields using refs
+agent-browser fill @e1 "test@example.com"
+agent-browser fill @e2 "password123"
+agent-browser click @e3
+
+# Capture screenshot evidence
+agent-browser screenshot evidence/signup-result.png
+
+# Get page state
+agent-browser title
+agent-browser url
+```
+
+**UAT Evidence Required:**
+- `agent-browser snapshot` output showing page structure
+- `agent-browser screenshot` of key states (form, success, error)
+- Actual element interaction via `fill`, `click` commands
+
+**Installation:** `npm install -g agent-browser && agent-browser install`
 
 ---
 
