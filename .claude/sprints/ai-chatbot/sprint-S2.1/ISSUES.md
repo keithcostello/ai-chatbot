@@ -97,6 +97,7 @@
 |----|-------|----------|--------|------------|------------|-------|
 | ISS-001 | DATABASE_URL missing from .env.local | HIGH | RESOLVED | Not configured | Used `railway variables` to get DATABASE_PUBLIC_URL | P2 |
 | ISS-005 | Home page buttons don't work, missing branding | HIGH | RESOLVED | Missing logo image, wrong tagline text. Buttons already used Link component correctly. | Added Next.js Image component for logo (/profile_image.jpg), changed tagline to "SteerTrue, Stay True." Verified with agent-browser: Get Started navigates to /signup, Log In navigates to /login. Screenshot: screenshots/home-page-uat.png | P5-UAT |
+| ISS-006 | Home page stuck on "Loading..." forever | CRITICAL | RESOLVED | `app/page.tsx` used `useState(true)` for `isLoading`, causing server-rendered HTML to only show "Loading..." text. Client-side JavaScript had to execute to render actual content, but hydration was failing/slow. | Removed the loading gate. Changed `isLoading` state to non-blocking `authChecked`. Page now renders buttons immediately in server-side HTML. Auth check happens asynchronously without blocking render. Verified with curl: buttons appear in HTML, no "Loading..." text. | P5-UAT |
 
 ---
 
