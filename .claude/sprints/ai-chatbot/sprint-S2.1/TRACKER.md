@@ -6,10 +6,10 @@ HOW: Check Open Questions first. Reference Decision Log. Update Discussion Histo
 
 # Sprint S2.1 Tracker - Authentication Foundation
 
-## Status: READY_FOR_PRESPRINT
+## Status: IN_PROGRESS (Scope Change - Google OAuth)
 
 **Last Updated:** 2026-01-21
-**Updated By:** Session 33 (Opus 4.5)
+**Updated By:** Session 34 (Opus 4.5)
 
 ---
 
@@ -47,6 +47,9 @@ Captures WHY decisions were made. Required reading for session continuity.
 | 2026-01-21 | Include role field from Day 1 | 1) Add role later (Day 6) 2) Add now | Prep for admin separation, avoid migration later | Keith |
 | 2026-01-21 | Add display_name + avatar_url fields | 1) Minimal schema 2) Extended profile | User preference for profile features | Keith |
 | 2026-01-21 | Agent consultation NOT required Day 1 | 1) Consult pydantic_architect 2) Skip | Auth is Next.js native (Auth.js), not Pydantic AI or CopilotKit | Session 33 |
+| 2026-01-21 | Delete repo except .claude and .env | 1) Delete all 2) Preserve existing 3) Delete except .claude/.env | Fresh start needed but preserve sprint config and secrets | Keith |
+| 2026-01-21 | Add agent-browser for UAT | N/A | Required for UI verification on deployed Railway URL | Keith |
+| 2026-01-21 | **SCOPE CHANGE: Add Google OAuth** | 1) Keep email-only 2) Add Google OAuth | Google sign-in was missed in original scope, required for complete auth | Keith |
 
 ---
 
@@ -67,6 +70,33 @@ Captures WHY decisions were made. Required reading for session continuity.
 
 **Conclusion:** Sprint S2.1 folder created with CONTEXT.md and PROMPT.md. Ready for /pre-sprint validation.
 
+### Session 34 (2026-01-21) - Sprint Execution + Google OAuth Scope Change
+
+**Discussed:**
+
+- Executed /run-sprint S2.1
+- Created SPRINT_HISTORY.md at .claude/sprints/ai-chatbot/
+- User decision: Delete repo content except .claude/ and .env files
+- Day 1 complete: Signup form, API routes, database migration, Railway deployment
+- Day 2 complete: Login form, session management, logout
+- Installed agent-browser for UAT testing
+- All email/password success criteria verified (SC-1 through SC-10)
+- **SCOPE CHANGE:** Google OAuth was missed in original scope
+- UAT Gate paused, returning to execution for Google OAuth
+- Created Google Cloud OAuth setup guide
+
+**Current Status:**
+- Email/password auth: COMPLETE (verified on Railway)
+- Google OAuth: PENDING (awaiting credentials from user)
+- UAT Gate: PAUSED (will re-run full UAT after Google OAuth)
+
+**Files Created This Session:**
+- `.claude/sprints/ai-chatbot/SPRINT_HISTORY.md`
+- `escalations/scope-change-google-oauth.md`
+- `handoffs/google-oauth-setup-guide.md`
+- `checkpoints/checkpoint-3.md`, `checkpoint-3-day2.md`, `checkpoint-5.md`
+- `screenshots/` folder with UI evidence
+
 ---
 
 ## Open Questions
@@ -82,6 +112,7 @@ Questions that need resolution before sprint can proceed.
 | 5 | Additional profile fields? | RESOLVED | display_name, avatar_url |
 | 6 | Where does frontend code live? | RESOLVED | keithcostello/ai-chatbot repo |
 | 7 | Which Railway environments? | RESOLVED | dev-sandbox, keith-dev, amy-dev |
+| 8 | Google OAuth credentials? | **PENDING** | User following setup guide |
 
 ---
 

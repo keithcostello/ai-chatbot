@@ -42,6 +42,8 @@ HOW: Follow phases in order. Meet success criteria. Pass UAT before merge.
 | SC-8 | Signup page matches brand design | Visual comparison to color palette | ⬜ |
 | SC-9 | Deployed to Railway (dev environment) | `railway logs` + curl to Railway URL | ⬜ |
 | SC-10 | Password confirmation validated server-side | API rejects mismatched passwords with 400 | ⬜ |
+| SC-11 | **User can sign in with Google OAuth** | Click "Sign in with Google", complete OAuth flow, redirected to app | ⬜ |
+| SC-12 | **Google OAuth creates/links user account** | Google user appears in database with email from Google | ⬜ |
 
 ---
 

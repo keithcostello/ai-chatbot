@@ -26,6 +26,8 @@ HOW: Read sections relevant to your current task. Architecture decisions are bin
 | 7 | POST /api/auth/login (Day 2) | API | Validates credentials, returns session |
 | 8 | GET /api/auth/me (Day 2) | API | Returns current user from session |
 | 9 | Session persistence (Day 2) | Feature | Token in httpOnly cookie, auto-revalidate on refresh |
+| 10 | **Google OAuth sign-in** | Feature | User can sign in with Google account (SCOPE CHANGE 2026-01-21) |
+| 11 | **Google provider config** | Config | Auth.js Google provider with AUTH_GOOGLE_ID/SECRET |
 
 ---
 
