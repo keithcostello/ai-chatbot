@@ -1035,6 +1035,8 @@ if current_branch != expected_branch:
 
 **Code review happens BEFORE PM alignment review per industry best practices.**
 
+**Reference:** `.claude/docs/PROCESS_FIX_CODE_REVIEW.md` - Why this gate exists and what failed without it.
+
 Delegate to code-reviewer agent:
 
 ```python
@@ -1049,6 +1051,10 @@ Verify:
 2. Test coverage for new/modified code
 3. Security scan (OWASP Top 10)
 4. Code quality (linting, type checking)
+5. CLAIM VERIFICATION (MANDATORY):
+   - Any claim about library behavior MUST cite source
+   - Example: "Auth.js uses X" → grep actual code or quote docs
+   - NO GUESSING library internals
 
 Write: {sprint_path}/checkpoints/code-review-3.md
 
@@ -1075,6 +1081,19 @@ Update state.md: iteration++
 
 **PM reviews sprint alignment AFTER code quality passes.**
 
+**BLOCKING GATE (V4.3):** Before delegating to PM, verify code-review file exists:
+
+```python
+# BLOCKING - PM cannot review without code review
+code_review_file = f"{sprint_path}/checkpoints/code-review-3.md"
+if not file_exists(code_review_file):
+    HALT("Code review required before PM review. Spawn code-reviewer first.")
+
+code_review = read(code_review_file)
+if "REJECTED" in code_review.decision:
+    HALT("Code review must pass before PM review.")
+```
+
 Delegate to pm-agent to review checkpoint:
 
 ```python
@@ -1085,6 +1104,14 @@ Read: {sprint_path}/checkpoints/checkpoint-3.md
 Read: {sprint_path}/checkpoints/code-review-3.md
 
 Code quality: APPROVED (verified by code-reviewer)
+
+PM BOUNDARIES:
+- Review sprint alignment (does code match goal?)
+- Verify DEV followed the plan
+- DO NOT make claims about library internals
+- DO NOT approve based on "looks correct"
+
+If any claim about external libraries lacks citation → REJECT
 
 Verify DEV completed assigned tasks and aligns with sprint goals.
 Return APPROVED or REJECTED.

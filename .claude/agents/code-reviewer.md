@@ -196,6 +196,63 @@ details: |
   [paste actual linting output]
 ```
 
+## CLAIM VERIFICATION (V1.1 - MANDATORY)
+
+**Reference:** `.claude/docs/PROCESS_FIX_CODE_REVIEW.md` - Why this matters (S2.1 failure analysis).
+
+### Why This Exists
+
+Sprint S2.1 was approved with false claim: "Cookie name `session=` matches Auth.js convention"
+
+Auth.js actually uses: `__Secure-authjs.session-token`
+
+This uncited false claim caused 7+ UAT failures.
+
+### Rules
+
+**Any claim about external library behavior MUST include citation:**
+
+| Claim Type | Required Evidence |
+|------------|-------------------|
+| Cookie names | Grep actual cookie creation code |
+| Session handling | Read session.ts or equivalent |
+| Security properties | Quote from security documentation |
+| API behavior | Curl the actual API, paste response |
+| Framework conventions | Link to official docs or grep source |
+
+### Examples
+
+❌ **WRONG:** "Cookie name matches Auth.js convention"
+
+✅ **RIGHT:** "Auth.js v5 uses `__Secure-authjs.session-token` (source: node_modules/next-auth/src/lib/init.ts line 45)"
+
+❌ **WRONG:** "This follows Next.js best practices"
+
+✅ **RIGHT:** "Next.js recommends server actions for mutations (source: nextjs.org/docs/app/building-your-application/data-fetching/server-actions)"
+
+### Verification Steps
+
+1. **Find claims** - Search checkpoint for phrases like "matches convention", "follows pattern", "uses X"
+2. **For each claim** - Check if source is cited
+3. **If no citation** - REJECT with message: "Claim '[claim]' requires citation"
+4. **Verify citations** - If citation provided, grep/read to confirm accuracy
+
+### Output Format
+
+```yaml
+claim_verification: [PASS/FAIL]
+uncited_claims:
+  - claim: "Cookie name matches Auth.js convention"
+    location: checkpoint-3.md line 27
+    action: REJECT - requires citation
+verified_claims:
+  - claim: "Auth.js uses __Secure-authjs.session-token"
+    source: node_modules/next-auth/src/lib/init.ts:45
+    verified: true
+```
+
+---
+
 ## DECISION CRITERIA
 
 ### PASS Requirements (ALL must be true)
@@ -204,6 +261,7 @@ details: |
 - ✅ Test coverage: PASS (or explicitly N/A with justification)
 - ✅ Security scan: PASS
 - ✅ Code quality: PASS (or warnings only, no errors)
+- ✅ Claim verification: PASS (all library claims cite sources)
 
 ### FAIL Triggers (ANY triggers fail)
 
@@ -211,6 +269,7 @@ details: |
 - ❌ Security vulnerability (CRITICAL or HIGH severity)
 - ❌ Missing tests for new code (without justification)
 - ❌ Linting errors (not just warnings)
+- ❌ Uncited claims about library behavior
 
 ## CHECKPOINT OUTPUT FORMAT
 
