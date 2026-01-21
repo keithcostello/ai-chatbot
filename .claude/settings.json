@@ -29,6 +29,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File scripts/blocked-detector.ps1",
+            "timeout": 10,
+            "statusMessage": "Checking for BLOCKED events..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
