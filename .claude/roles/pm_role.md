@@ -316,12 +316,23 @@ WORKFLOW:
       action: "Two-part gate - DEV then HUMAN"
       critical: "PM MUST STOP after PM verification. Await human approval before Phase 6."
       pm_duties:
-        - "Verify DEV checkpoint has actual curl responses"
-        - "Run own tests independently"
-        - "Compare results to DEV evidence"
-        - "Write uat-pending.md"
+        - "Verify DEV checkpoint has actual curl responses AND agent-browser evidence"
+        - "For UI features: Execute SAME agent-browser commands from human-uat-test-plan.md"
+        - "Run own tests independently using agent-browser and curl"
+        - "Compare PM screenshots/snapshots to DEV evidence"
+        - "Write uat-pending.md with both API and browser evidence"
         - "STOP and await human"
+      agent_browser_verification:
+        when: "Sprint delivers any UI/website feature"
+        required_actions:
+          - "agent-browser open [same-url-as-dev]"
+          - "agent-browser snapshot (compare to DEV snapshot)"
+          - "Execute all commands from human-uat-test-plan.md"
+          - "agent-browser screenshot [pm-evidence-path]"
+          - "Compare PM screenshot to DEV screenshot"
+          - "If mismatch → REJECT checkpoint"
       violation: "Proceeding to Phase 6 without human UAT response = Framework breach = Grade F"
+      ui_violation: "Approving UI checkpoint without agent-browser verification = REJECTED"
 
     - phase: 6
       name: "Documentation"

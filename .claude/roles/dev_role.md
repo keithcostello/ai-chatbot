@@ -332,13 +332,24 @@ WORKFLOW:
 
     - phase: 5
       name: "UAT"
-      dev_action: "Test DEPLOYED endpoint, document results"
-      deliverables: ["Checkpoint-5.md with curl evidence"]
+      dev_action: "Test DEPLOYED endpoint with agent-browser (UI) and curl (API)"
+      deliverables: ["Checkpoint-5.md with evidence", "human-uat-test-plan.md", "screenshots/"]
       checklist:
         - "Deployed endpoint tested (not just local pytest)"
-        - "Actual curl responses pasted as evidence"
+        - "UI features tested with agent-browser (MANDATORY)"
+        - "agent-browser snapshot captured for page structure"
+        - "agent-browser screenshot captured as visual evidence"
+        - "API endpoints tested with curl, responses pasted"
         - "Pass rate ≥85%"
         - "Any failures documented in ISSUES.md"
+      agent_browser_required:
+        when: "Sprint delivers any UI/website feature"
+        commands:
+          - "agent-browser open [deployed-url]"
+          - "agent-browser snapshot"
+          - "agent-browser fill/click/select as needed"
+          - "agent-browser screenshot [evidence-path]"
+          - "agent-browser close"
 
     - phase: 6
       name: "Documentation"

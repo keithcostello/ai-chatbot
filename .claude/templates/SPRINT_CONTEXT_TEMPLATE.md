@@ -186,11 +186,27 @@ How to verify this sprint's deliverables.
 |------|--------|-----------------|
 | 1 | {do this} | {see this} |
 
-### Browser Testing (if UI)
+### Browser Testing (if UI) - MANDATORY
+
+**Tool:** `agent-browser` (AI-native browser automation)
 
 | Browser | Viewport | Must Pass |
 |---------|----------|-----------|
 | {browser} | {size} | {specific checks} |
+
+**Required Evidence:**
+- `agent-browser snapshot` output (accessibility tree)
+- `agent-browser screenshot` files for visual verification
+
+**Example Test Commands:**
+```bash
+agent-browser open {DEPLOYMENT_URL}/{PAGE}
+agent-browser snapshot
+agent-browser fill @e3 "test@example.com"
+agent-browser click @e5
+agent-browser screenshot evidence/{feature}-result.png
+agent-browser close
+```
 
 ---
 

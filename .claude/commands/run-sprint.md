@@ -369,30 +369,88 @@ DEV must still submit checkpoints for N/A phases with content: "N/A per USER dir
 | Form | YES |
 | Backend-only API | NO |
 
+### Agent-Browser Tool (REQUIRED)
+
+**All browser testing uses `agent-browser` CLI for AI-native automation.**
+
+Installation (if not present):
+```bash
+npm install -g agent-browser
+agent-browser install  # Download Chromium
+```
+
 ### Phase 5 UAT Requirements for UI Features
 
-**human-uat-test-plan.md MUST include:**
+**human-uat-test-plan.md MUST include agent-browser commands:**
 
 ```bash
-# Browser automation test
-npx playwright test tests/e2e/[feature].spec.ts
+# 1. Open deployed URL
+agent-browser open https://[deployment-url]/[page]
 
-# OR manual browser verification steps:
-1. Navigate to [URL]
-2. Verify [element] is visible
-3. Click [button]
-4. Verify [result]
+# 2. Take accessibility snapshot (for AI to understand page structure)
+agent-browser snapshot
+
+# 3. Interact with elements using @refs from snapshot
+agent-browser fill @e3 "test@example.com"
+agent-browser fill @e4 "password123"
+agent-browser click @e5  # Submit button
+
+# 4. Capture screenshot as evidence
+agent-browser screenshot evidence/[feature]-[step].png
+
+# 5. Verify result
+agent-browser snapshot  # Check for success message
+
+# 6. Close browser
+agent-browser close
 ```
+
+### Agent-Browser Command Reference
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `open [url]` | Navigate to page | `agent-browser open https://app.example.com/signup` |
+| `snapshot` | Get page structure with element refs | `agent-browser snapshot` |
+| `click @ref` | Click element | `agent-browser click @e5` |
+| `fill @ref "text"` | Enter text in field | `agent-browser fill @e3 "user@test.com"` |
+| `screenshot [path]` | Capture visual evidence | `agent-browser screenshot signup-form.png` |
+| `select @ref "option"` | Select dropdown option | `agent-browser select @e7 "Option 1"` |
+| `check @ref` | Check checkbox | `agent-browser check @e8` |
+| `close` | Close browser | `agent-browser close` |
 
 ### Evidence Required
 
-- Screenshot or video of feature working in browser
-- Browser console showing no errors
-- Network tab showing successful API calls
+| Evidence Type | Tool Command | Purpose |
+|---------------|--------------|---------|
+| Screenshot | `agent-browser screenshot [path]` | Visual proof of UI state |
+| Accessibility snapshot | `agent-browser snapshot` | AI-readable page structure |
+| Console errors | Browser DevTools or snapshot | No JS errors |
+| Network verification | curl to API endpoints | Backend integration works |
+
+### DEV UAT Execution Flow
+
+```
+1. agent-browser open [deployed-url]
+2. agent-browser snapshot → identify element refs
+3. Execute test steps using @refs
+4. agent-browser screenshot → capture evidence
+5. Repeat for all test cases
+6. agent-browser close
+```
+
+### PM Verification Flow
+
+```
+1. agent-browser open [same-url]
+2. Execute SAME commands from human-uat-test-plan.md
+3. Compare PM screenshot to DEV screenshot
+4. If mismatch → REJECT
+5. agent-browser close
+```
 
 ### Violation
 
-**UAT for website feature without browser verification = Phase 5 REJECTED**
+**UAT for website feature without agent-browser verification = Phase 5 REJECTED**
 
 ---
 
