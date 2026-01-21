@@ -15,6 +15,7 @@
 |----------|-------|-------------|
 | project_name | `ai-chatbot` | Sprint namespace identifier |
 | sprint_root | `.claude/sprints/ai-chatbot/` | Base path for sprint directories |
+| sprint_history | `.claude/sprints/ai-chatbot/SPRINT_HISTORY.md` | Sprint tracking log |
 | source_root | `app/`, `db/`, `lib/` | Source code locations |
 | test_root | `tests/` or `__tests__/` | Test files location |
 | components_root | `components/` | React components |
@@ -171,6 +172,7 @@ ai-chatbot/                          # git repo root
 
 | Content Type | Location | Example |
 |--------------|----------|---------|
+| Sprint history | `.claude/sprints/ai-chatbot/SPRINT_HISTORY.md` | Active/completed sprints log |
 | Sprint prompt | `.claude/sprints/ai-chatbot/sprint-{id}/PROMPT.md` | `sprint-S2.1/PROMPT.md` |
 | Sprint context | `.claude/sprints/ai-chatbot/sprint-{id}/CONTEXT.md` | `sprint-S2.1/CONTEXT.md` |
 | Issues log | `.claude/sprints/ai-chatbot/sprint-{id}/ISSUES.md` | `sprint-S2.1/ISSUES.md` |
