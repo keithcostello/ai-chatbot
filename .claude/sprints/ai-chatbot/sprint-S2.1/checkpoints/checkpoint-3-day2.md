@@ -1,4 +1,4 @@
-# Checkpoint 3 - Day 2: Phase 5-6 Implementation
+# Checkpoint 3 - Day 2: Phase 5-6 Implementation + UAT Complete
 
 ## BRANCH VERIFICATION (MANDATORY - CHECK FIRST)
 
@@ -22,268 +22,256 @@ Status: MATCH
 
 ---
 
-## IMPLEMENTATION DETAILS
+## DEPLOYED ENDPOINT TESTING (MANDATORY UAT EVIDENCE)
 
-### Phase 5: Auth Routes (Day 2 - Login + Session)
-
-**POST /api/auth/login** (`app/api/auth/login/route.ts`):
-- Validates email and password against database
-- Uses bcrypt.compare() for password verification
-- Creates JWT token with jose library (SignJWT)
-- Sets session cookie with security flags:
-  - `httpOnly: true` - Prevents XSS access to cookie
-  - `secure: process.env.NODE_ENV === 'production'` - HTTPS only in production
-  - `sameSite: 'strict'` - Prevents CSRF attacks
-- Returns GENERIC "Invalid credentials" error for both wrong password AND non-existent user (no user enumeration per SC-5)
-
-**GET /api/auth/me** (`app/api/auth/me/route.ts`):
-- Reads session cookie
-- Verifies JWT token with jose library (jwtVerify)
-- Returns user data from token payload
-- Returns 401 "Not authenticated" if no valid session
-
-**POST /api/auth/logout** (`app/api/auth/logout/route.ts`):
-- Clears session cookie by setting maxAge to 0
-- Returns `{"success": true}`
-
-**Middleware** (`middleware.ts`):
-- Defines public routes that don't require auth
-- Verifies JWT token for protected routes
-- Redirects unauthenticated users to /login for pages
-- Returns 401 JSON for unauthenticated API requests
-- Redirects authenticated users away from /login and /signup to /
-
-### Phase 6: Login UI (Day 2)
-
-**Login Page** (`app/(auth)/login/page.tsx`):
-- Same branded split-page layout as signup (dark forest green left, cream right)
-- Form fields: email, password
-- Submit calls POST /api/auth/login
-- Success redirects to / (dashboard placeholder)
-- Error shows GENERIC "Invalid credentials" message (no user enumeration)
-- Link to signup page
-
-**Home Page** (`app/page.tsx`):
-- Updated to show authenticated state
-- Displays user email when logged in
-- Shows "Log Out" button for authenticated users
-- Shows "Get Started" / "Log In" links for unauthenticated users
+### Sandbox URL
+https://steertrue-chat-dev-sandbox.up.railway.app
 
 ---
 
-## BUILD VERIFICATION
-
-```
-> ai_chat_interface@0.1.0 build
-> next build
-
- Next.js 16.1.4 (Turbopack)
-- Environments: .env.local
-
- The "middleware" file convention is deprecated. Please use "proxy" instead.
-  Creating an optimized production build ...
- Compiled successfully in 1536.6ms
-  Running TypeScript ...
-  Collecting page data using 23 workers ...
-  Generating static pages using 23 workers (11/11) in 694.5ms
-  Finalizing page optimization ...
-
-Route (app)
- /
- /_not-found
- /api/auth/[...nextauth]
- /api/auth/login
- /api/auth/logout
- /api/auth/me
- /api/auth/signup
- /api/health
- /login
- /signup
-
- (Static)   prerendered as static content
- (Dynamic)  server-rendered on demand
-```
-
-**Build Status:** SUCCESS - All routes registered
-
----
-
-## GIT EVIDENCE
-
-```
-[dev-sprint-S2.1 fb20eea] feat(auth): Implement Phase 5-6 - Login, logout, session, and login UI
- 9 files changed, 526 insertions(+), 28 deletions(-)
- create mode 100644 app/(auth)/login/page.tsx
- create mode 100644 app/api/auth/login/route.ts
- create mode 100644 app/api/auth/logout/route.ts
- create mode 100644 app/api/auth/me/route.ts
- create mode 100644 middleware.ts
-```
-
-Push status:
-```
-To https://github.com/keithcostello/ai-chatbot.git
-   a81cf25..fb20eea  dev-sprint-S2.1 -> dev-sprint-S2.1
-```
-
----
-
-## DEPLOYED ENDPOINT TESTING
-
-**BLOCKER: Railway deployment has not picked up new commit yet.**
-
-### Health Check (current deployment)
+### Test 1: Login with WRONG password (SC-5)
 
 Command:
 ```bash
-curl -i https://steertrue-chat-dev-sandbox.up.railway.app/api/health
+curl -i -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test-phase3@example.com","password":"wrongpassword"}'
+```
+
+Response:
+```
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Date: Wed, 21 Jan 2026 15:41:54 GMT
+Server: railway-edge
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: OJXVz5DsQkC78rqnLPU1MQ
+Transfer-Encoding: chunked
+
+{"error":"Invalid credentials","code":"INVALID_CREDENTIALS"}
+```
+
+**Verification:** Returns GENERIC "Invalid credentials" (no "wrong password" message)
+
+---
+
+### Test 2: Login with NON-EXISTENT user (SC-5)
+
+Command:
+```bash
+curl -i -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"nonexistent@example.com","password":"anypassword"}'
+```
+
+Response:
+```
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Date: Wed, 21 Jan 2026 15:41:57 GMT
+Server: railway-edge
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: Cex-2qMYS5ywMx0FLPU1MQ
+Transfer-Encoding: chunked
+
+{"error":"Invalid credentials","code":"INVALID_CREDENTIALS"}
+```
+
+**Verification:** Returns IDENTICAL "Invalid credentials" message as Test 1 - NO user enumeration
+
+---
+
+### Test 3: Login with VALID credentials (SC-4, SC-6)
+
+Command:
+```bash
+curl -i -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test-phase3@example.com","password":"testpass123"}'
 ```
 
 Response:
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Wed, 21 Jan 2026 15:37:30 GMT
+Date: Wed, 21 Jan 2026 15:42:05 GMT
 Server: railway-edge
+Set-Cookie: session=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImMzNjc1OWU0LTgyZTEtNDQ0Mi1hYmVkLTQ5ZmI0ZmRiNTQwMSIsImVtYWlsIjoidGVzdC1waGFzZTNAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImRpc3BsYXlOYW1lIjpudWxsLCJpYXQiOjE3NjkwMTAxMjUsImV4cCI6MTc2OTYxNDkyNX0.D3haTQ8Pe0wj5mF5Fwtsjvr9NfXc6Dwk9CAY3GjVA7w; Path=/; Expires=Wed, 28 Jan 2026 15:42:05 GMT; Max-Age=604800; Secure; HttpOnly; SameSite=strict
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: 701CUeKsQb--yxDC0_TJvA
+Transfer-Encoding: chunked
 
-{"status":"ok","timestamp":"2026-01-21T15:37:30.218Z"}
+{"user":{"id":"c36759e4-82e1-4442-abed-49fb4fdb5401","email":"test-phase3@example.com","role":"user","displayName":null}}
 ```
 
-### Login Endpoint Test (new code NOT deployed yet)
+**Verification SC-4:** Login successful - returns user object
+**Verification SC-6:** Set-Cookie header shows:
+- `Secure` - Present
+- `HttpOnly` - Present
+- `SameSite=strict` - Present
+
+---
+
+### Test 4: GET /api/auth/me with session cookie (SC-7)
 
 Command:
 ```bash
-curl -i -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}'
+curl -i https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/me \
+  -H "Cookie: session=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImMzNjc1OWU0LTgyZTEtNDQ0Mi1hYmVkLTQ5ZmI0ZmRiNTQwMSIsImVtYWlsIjoidGVzdC1waGFzZTNAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImRpc3BsYXlOYW1lIjpudWxsLCJpYXQiOjE3NjkwMTAxMjUsImV4cCI6MTc2OTYxNDkyNX0.D3haTQ8Pe0wj5mF5Fwtsjvr9NfXc6Dwk9CAY3GjVA7w"
 ```
 
 Response:
 ```
-HTTP/1.1 400 Bad Request
+HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Wed, 21 Jan 2026 15:38:19 GMT
+Date: Wed, 21 Jan 2026 15:42:16 GMT
 Server: railway-edge
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: V2M3fgjfR3yVQpGM2prcFg
+Transfer-Encoding: chunked
 
-"Bad request."
+{"user":{"id":"c36759e4-82e1-4442-abed-49fb4fdb5401","email":"test-phase3@example.com","role":"user","displayName":null}}
 ```
 
-**Analysis:** The 400 "Bad request" indicates the `/api/auth/login` route doesn't exist in the current deployment. The new code is committed and pushed to `dev-sprint-S2.1` but Railway needs to:
-1. Be triggered to redeploy from this branch, OR
-2. The deployment branch may be set to `main` or `dev` instead of `dev-sprint-S2.1`
+**Verification SC-7:** GET /api/auth/me returns current user from session cookie
 
 ---
 
-## HUMAN ACTION REQUIRED
+### Test 5: Logout
 
-To complete UAT testing, please:
+Command:
+```bash
+curl -i -X POST https://steertrue-chat-dev-sandbox.up.railway.app/api/auth/logout \
+  -H "Cookie: session=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImMzNjc1OWU0LTgyZTEtNDQ0Mi1hYmVkLTQ5ZmI0ZmRiNTQwMSIsImVtYWlsIjoidGVzdC1waGFzZTNAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImRpc3BsYXlOYW1lIjpudWxsLCJpYXQiOjE3NjkwMTAxMjUsImV4cCI6MTc2OTYxNDkyNX0.D3haTQ8Pe0wj5mF5Fwtsjvr9NfXc6Dwk9CAY3GjVA7w"
+```
 
-1. **Check Railway deployment branch**: Verify steertrue-chat-frontend is configured to deploy from `dev-sprint-S2.1`
+Response:
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 21 Jan 2026 15:42:18 GMT
+Server: railway-edge
+Set-Cookie: session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=strict
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: 0HPdZicPQou1Obvv0_TJvA
+Transfer-Encoding: chunked
 
-2. **Trigger redeploy** if branch is correct:
-   ```bash
-   railway up
-   ```
+{"success":true}
+```
 
-3. **Or update deployment branch** in Railway dashboard to `dev-sprint-S2.1`
-
-4. **Once deployed**, I will run the following UAT tests:
-   - Login with valid credentials (test user from Phase 3)
-   - Login with wrong password (verify generic "Invalid credentials" error)
-   - Login with non-existent user (verify SAME generic error)
-   - GET /api/auth/me with session cookie
-   - POST /api/auth/logout
-   - Verify Set-Cookie header has HttpOnly, Secure, SameSite flags
+**Verification:** Logout clears session cookie (`Max-Age=0`)
 
 ---
 
-## SUCCESS CRITERIA ADDRESSED
+## AGENT-BROWSER UI TESTING
 
-| # | Criterion | Implementation | Evidence |
-|---|-----------|----------------|----------|
-| SC-4 | User can log in with valid credentials | POST /api/auth/login validates and creates session | Build shows route registered |
-| SC-5 | Invalid credentials show generic error | All auth failures return "Invalid credentials" | Code lines 26-53 in login/route.ts |
-| SC-6 | Session cookie is httpOnly + Secure | Cookie set with httpOnly, secure, sameSite flags | Code lines 69-76 in login/route.ts |
-| SC-7 | GET /api/auth/me returns current user | Route verifies JWT and returns user data | Build shows route registered |
+### Login Page Test
+
+```
+agent-browser open https://steertrue-chat-dev-sandbox.up.railway.app/login
+> SteerTrue
+  https://steertrue-chat-dev-sandbox.up.railway.app/login
+
+agent-browser snapshot --interactive
+> - textbox "Email" [ref=e1]
+> - textbox "Password" [ref=e2]
+> - button "Log In" [ref=e3]
+> - link "Sign up" [ref=e4]
+
+agent-browser fill @e1 "test-phase3@example.com"
+> Done
+
+agent-browser fill @e2 "testpass123"
+> Done
+
+agent-browser screenshot "...\screenshots\login-filled.png"
+> Screenshot saved
+
+agent-browser click @e3
+> Done
+
+agent-browser snapshot
+> - document:
+>   - alert
+>   - banner:
+>     - text: test-phase3@example.com
+>     - button "Log Out" [ref=e1]
+>   - heading "SteerTrue" [ref=e2] [level=1]
+>   - paragraph: Welcome back, test-phase3@example.com!
+>   - paragraph: Dashboard coming soon...
+
+agent-browser screenshot "...\screenshots\login-success.png"
+> Screenshot saved
+
+agent-browser close
+> Browser closed
+```
+
+**Verification:** Login form submits and redirects to authenticated home page showing user email
 
 ---
 
-## CODE EVIDENCE FOR SC-5 (No User Enumeration)
+## SCREENSHOTS
 
-From `app/api/auth/login/route.ts`:
-
-```typescript
-// User not found - return GENERIC error (no user enumeration per SC-5)
-if (!user) {
-  return NextResponse.json(
-    { error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
-    { status: 401 }
-  );
-}
-
-// Invalid password - return SAME GENERIC error (no user enumeration per SC-5)
-if (!isValid) {
-  return NextResponse.json(
-    { error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
-    { status: 401 }
-  );
-}
-```
-
-From `app/(auth)/login/page.tsx`:
-
-```typescript
-if (!response.ok) {
-  // GENERIC error message - no user enumeration (SC-5)
-  // Whether user doesn't exist OR password is wrong, show same message
-  setError('Invalid credentials');
-  return;
-}
-```
+| Screenshot | Path | Description |
+|------------|------|-------------|
+| Login form filled | `.claude/sprints/ai-chatbot/sprint-S2.1/screenshots/login-filled.png` | Login page with credentials entered |
+| Login success | `.claude/sprints/ai-chatbot/sprint-S2.1/screenshots/login-success.png` | Home page after successful login showing user email |
 
 ---
 
-## CODE EVIDENCE FOR SC-6 (Cookie Security Flags)
+## SUCCESS CRITERIA VERIFICATION
 
-From `app/api/auth/login/route.ts`:
+| # | Criterion | Status | Evidence |
+|---|-----------|--------|----------|
+| SC-4 | User can log in with valid credentials | PASS | Test 3 returns 200 OK with user object |
+| SC-5 | Invalid credentials show generic error (no user enumeration) | PASS | Test 1 and Test 2 return IDENTICAL "Invalid credentials" message |
+| SC-6 | Session cookie is httpOnly + Secure | PASS | Test 3 Set-Cookie header shows `Secure; HttpOnly; SameSite=strict` |
+| SC-7 | GET /api/auth/me returns current user | PASS | Test 4 returns user data from session cookie |
 
-```typescript
-// Set session cookie with security flags (SC-6)
-// HttpOnly: Prevents XSS access to cookie
-// Secure: Cookie only sent over HTTPS
-// SameSite=Strict: Prevents CSRF attacks
-const cookieStore = await cookies();
-cookieStore.set(SESSION_COOKIE_NAME, token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  maxAge: SESSION_MAX_AGE,
-  path: '/',
-});
-```
+---
+
+## UAT RESULTS SUMMARY
+
+| Category | Passed | Failed | Total | Rate |
+|----------|--------|--------|-------|------|
+| Login API Tests | 5 | 0 | 5 | 100% |
+| Login UI Tests | 1 | 0 | 1 | 100% |
+| **Total** | **6** | **0** | **6** | **100%** |
+
+**Pass Rate:** 100% (exceeds 85% threshold)
 
 ---
 
 ## ISSUES.MD STATUS
 
 - Location: `.claude/sprints/ai-chatbot/sprint-S2.1/ISSUES.md`
-- No new issues added this phase
-- Pending: Railway deployment needs to be updated to test UAT
+- No issues found during UAT
+- All success criteria verified
 
 ---
 
-## NEXT STEPS (After Human Action)
+## GIT STATUS
 
-Once Railway deployment is updated:
-
-1. Run full UAT test suite with curl commands
-2. Test login UI with agent-browser
-3. Capture screenshots with Railway URL visible
-4. Update this checkpoint with actual UAT evidence
-5. Proceed to Phase 7 (Railway Deployment finalization)
+```
+On branch dev-sprint-S2.1
+nothing to commit, working tree clean
+```
 
 ---
 
-**Status:** BLOCKED - Awaiting Railway deployment update
+GIT:
+```bash
+git add .
+git commit -m "UAT complete - Phase 5-6 login/logout verified on deployed endpoint"
+git push origin dev-sprint-S2.1
+```
 
-**RELAY TO PM:** "Checkpoint 3 Day 2 submitted. Phase 5-6 code complete and pushed to dev-sprint-S2.1. BLOCKED on UAT - Railway deployment needs to be updated to serve new code. Requesting human to verify/trigger Railway deployment."
+RELAY TO PM: "Checkpoint 3 Day 2 UAT COMPLETE on dev-sprint-S2.1. All 6 tests pass (100%). SC-4, SC-5, SC-6, SC-7 verified with actual curl and agent-browser evidence."
+
+STOP - Awaiting PM approval.
