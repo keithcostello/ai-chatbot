@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 
 export default function SignupPage() {
@@ -92,16 +93,34 @@ export default function SignupPage() {
       {/* Left Panel - Branding (Desktop) */}
       <div className="hidden md:flex md:w-1/2 bg-[#2d4a3e] flex-col justify-center items-center p-12">
         <div className="text-center">
+          <Image
+            src="/profile_image.jpg"
+            alt="SteerTrue Logo"
+            width={80}
+            height={80}
+            className="mx-auto mb-4 rounded-lg"
+            priority
+          />
           <h1 className="text-4xl font-bold text-[#f8f4ed] mb-4">SteerTrue</h1>
           <p className="text-[#f8f4ed] text-lg opacity-90">
-            Your AI-powered conversation partner
+            SteerTrue, Stay True.
           </p>
         </div>
       </div>
 
       {/* Mobile Header - Branding */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-[#2d4a3e] p-4 z-10">
-        <h1 className="text-xl font-bold text-[#f8f4ed] text-center">SteerTrue</h1>
+        <div className="flex items-center justify-center gap-2">
+          <Image
+            src="/profile_image.jpg"
+            alt="SteerTrue Logo"
+            width={40}
+            height={40}
+            className="rounded-lg"
+            priority
+          />
+          <h1 className="text-xl font-bold text-[#f8f4ed]">SteerTrue</h1>
+        </div>
       </div>
 
       {/* Right Panel - Form */}
