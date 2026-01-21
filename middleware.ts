@@ -1,5 +1,10 @@
-import { auth } from '@/lib/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/lib/auth.config';
 import { NextResponse } from 'next/server';
+
+// Create auth instance with Edge-compatible config
+// This does NOT import bcrypt or postgres (Node.js-only modules)
+const { auth } = NextAuth(authConfig);
 
 // Routes that don't require authentication
 const publicRoutes = [
