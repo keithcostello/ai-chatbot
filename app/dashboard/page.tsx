@@ -1,135 +1,108 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+/**
+ * SKELETON DASHBOARD - TIER 0
+ *
+ * Purpose: Prove session works after Google OAuth.
+ *
+ * Contains ONLY:
+ * - useSession() from next-auth/react
+ * - Display session.user.email
+ * - Display session.user.name
+ * - Logout button using signOut()
+ *
+ * Does NOT contain:
+ * - Custom API calls
+ * - hasSessionCookie() checks
+ * - Complex state management
+ * - Custom /api/auth/me endpoint usage
+ */
 
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  displayName: string | null;
-}
+import { useSession, signOut } from 'next-auth/react';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    // Check authentication by calling server API
-    // Note: Always call API - HttpOnly cookies are invisible to JS but server can read them
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          // Not authenticated - redirect to login
-          setAuthError('Session expired. Please log in again.');
-          router.push('/login');
-        }
-      } catch {
-        // Error checking auth - redirect to login
-        setAuthError('Unable to verify authentication.');
-        router.push('/login');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-      router.push('/');
-      router.refresh();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  if (isLoading) {
+  // Loading state
+  if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f4ed]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5d8a6b] mx-auto mb-4"></div>
-          <p className="text-[#1e3a3a]">Loading...</p>
-        </div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        fontFamily: 'system-ui, sans-serif',
+        backgroundColor: '#f5f5f5'
+      }}>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  if (!user) {
-    return null; // Will redirect in useEffect
+  // Not authenticated - middleware should redirect, but fallback just in case
+  if (status === 'unauthenticated' || !session) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        fontFamily: 'system-ui, sans-serif',
+        backgroundColor: '#f5f5f5'
+      }}>
+        <p>Not authenticated. Redirecting...</p>
+      </div>
+    );
   }
 
+  // Authenticated - show session info
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f4ed]">
-      {/* Header */}
-      <header className="w-full p-4 bg-[#2d4a3e] flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Image
-            src="/profile_image.jpg"
-            alt="SteerTrue Logo"
-            width={40}
-            height={40}
-            className="rounded-lg"
-            priority
-          />
-          <h1 className="text-xl font-bold text-[#f8f4ed]">SteerTrue</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-[#f8f4ed]">{user.displayName || user.email}</span>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-[#f8f4ed] text-[#2d4a3e] font-medium rounded-lg hover:bg-[#e8e0d0] transition-colors"
-          >
-            Log Out
-          </button>
-        </div>
-      </header>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      fontFamily: 'system-ui, sans-serif',
+      backgroundColor: '#f5f5f5'
+    }}>
+      <h1 style={{ marginBottom: '1rem', color: '#333' }}>Dashboard</h1>
+      <p style={{ marginBottom: '0.5rem', color: '#666' }}>Skeleton - Tier 0</p>
 
-      {/* Main content */}
-      <main className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-[#1e3a3a] mb-6">Dashboard</h2>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '2rem',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        marginTop: '1rem',
+        textAlign: 'center'
+      }}>
+        <p style={{ marginBottom: '0.5rem', color: '#333' }}>
+          <strong>Email:</strong> {session.user?.email || 'No email'}
+        </p>
+        <p style={{ marginBottom: '1.5rem', color: '#333' }}>
+          <strong>Name:</strong> {session.user?.name || 'No name'}
+        </p>
 
-          <div className="bg-white rounded-xl p-8 shadow-sm border border-[#e8e0d0]">
-            <h3 className="text-xl font-semibold text-[#1e3a3a] mb-4">
-              Welcome, {user.displayName || user.email}!
-            </h3>
-            <p className="text-[#1e3a3a] mb-4">
-              You are successfully logged in to SteerTrue.
-            </p>
-            <div className="bg-[#f0ebe0] rounded-lg p-4">
-              <h4 className="font-medium text-[#1e3a3a] mb-2">Account Details</h4>
-              <ul className="text-sm text-[#1e3a3a] space-y-1">
-                <li><strong>Email:</strong> {user.email}</li>
-                <li><strong>Role:</strong> {user.role}</li>
-                {user.displayName && (
-                  <li><strong>Display Name:</strong> {user.displayName}</li>
-                )}
-              </ul>
-            </div>
-          </div>
+        <button
+          onClick={() => signOut({ callbackUrl: '/' })}
+          style={{
+            padding: '10px 20px',
+            fontSize: '14px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
 
-          <div className="mt-8 bg-[#5d8a6b] bg-opacity-10 rounded-xl p-6 border border-[#5d8a6b] border-opacity-20">
-            <h3 className="text-lg font-semibold text-[#1e3a3a] mb-2">
-              Coming Soon
-            </h3>
-            <p className="text-[#1e3a3a]">
-              Chat features and AI coaching will be available here soon. Stay tuned!
-            </p>
-          </div>
-        </div>
-      </main>
+      <p style={{ marginTop: '2rem', color: '#999', fontSize: '12px' }}>
+        Session verified via Auth.js useSession()
+      </p>
     </div>
   );
 }

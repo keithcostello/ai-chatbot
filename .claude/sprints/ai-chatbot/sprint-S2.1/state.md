@@ -12,10 +12,10 @@
 - **Iteration:** 9/20
 - **Position:** 3.6
 
-## Bug Fix In Progress
-- **2026-01-21:** Root cause confirmed - hasSessionCookie() cannot read HttpOnly cookies
-- **Status:** Fix identified, ready to implement
-- **Files to modify:** app/page.tsx, app/dashboard/page.tsx
+## Bug Fixes Applied
+- **2026-01-21:** hasSessionCookie() fix - removed (HttpOnly cookies invisible to JS)
+- **2026-01-21:** Dual session system fix - login now uses Auth.js signIn('credentials')
+- **Status:** Both fixes deployed to Railway
 
 ## Circuit Breaker Status
 - Total iterations: 9/20
@@ -30,11 +30,17 @@
 - **Security scan:** pass (SC-5, SC-6 verified)
 - **Code review:** pass (PM approved Day 1 + Day 2)
 
-## Critical Finding
-- **Bug:** `hasSessionCookie()` in app/page.tsx and app/dashboard/page.tsx
+## Critical Findings (Both Fixed)
+
+### Bug 1: hasSessionCookie() (FIXED)
 - **Symptom:** Dashboard stuck on "Loading..." for authenticated users
 - **Root Cause:** HttpOnly cookies are NOT visible to JavaScript via document.cookie
-- **Fix:** Remove hasSessionCookie() checks, always call /api/auth/me
+- **Fix:** Removed hasSessionCookie() checks
+
+### Bug 2: Dual Session System (FIXED)
+- **Symptom:** Custom login worked but middleware didn't recognize session
+- **Root Cause:** Custom `/api/auth/login` created `session` cookie, but Auth.js middleware expects `__Secure-authjs.session-token`
+- **Fix:** Login page now uses Auth.js `signIn('credentials')` for unified session handling
 
 ## Last Action
 - 2026-01-21: User confirmed bug via manual testing
@@ -64,4 +70,6 @@
 - 2026-01-21: **BUG CONFIRMED** - hasSessionCookie() cannot read HttpOnly cookies
 - 2026-01-21: Standard login verified WORKING
 - 2026-01-21: Google OAuth verified WORKING (session exists)
-- 2026-01-21: Root cause identified, fix ready to implement
+- 2026-01-21: Root cause #1 identified - hasSessionCookie() removed
+- 2026-01-21: Root cause #2 identified - Dual session system (custom vs Auth.js)
+- 2026-01-21: **FIX DEPLOYED** - Login uses Auth.js signIn('credentials') for unified sessions

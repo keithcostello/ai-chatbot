@@ -1,27 +1,26 @@
+/**
+ * SKELETON MIDDLEWARE - TIER 0
+ *
+ * Purpose: Minimal route protection.
+ *
+ * Public routes: /, /login, /signup, /api/auth, /api/health
+ * Protected routes: /dashboard (and everything else)
+ *
+ * Uses auth() from auth.config.ts
+ */
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
 import { NextResponse } from 'next/server';
 
-// Create auth instance with Edge-compatible config
-// This does NOT import bcrypt or postgres (Node.js-only modules)
 const { auth } = NextAuth(authConfig);
 
 // Routes that don't require authentication
-const publicRoutes = [
-  '/',         // Home page - landing page for unauthenticated users
-  '/login',
-  '/signup',
-  '/api/auth',  // All Auth.js routes - they handle their own security
-  '/api/health',
-];
-
-// Routes that should redirect to home if already authenticated
-const authRoutes = ['/login', '/signup'];
+const publicRoutes = ['/', '/login', '/signup', '/api/auth', '/api/health'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow public API routes and static assets
+  // Allow static assets
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
@@ -30,29 +29,21 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Check if it's a public route
+  // Check if public route
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  // Session is available on req.auth (Auth.js v5 pattern)
+  // Session available on req.auth (Auth.js v5)
   const isAuthenticated = !!req.auth;
 
-  // If authenticated and trying to access auth routes, redirect to dashboard
-  if (isAuthenticated && authRoutes.includes(pathname)) {
+  // Authenticated users on login/signup -> redirect to dashboard
+  if (isAuthenticated && (pathname === '/login' || pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // If not authenticated and trying to access protected routes
+  // Not authenticated on protected route -> redirect to login
   if (!isAuthenticated && !isPublicRoute) {
-    // For API routes, return 401
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Not authenticated', code: 'NOT_AUTHENTICATED' },
-        { status: 401 }
-      );
-    }
-    // For pages, redirect to login
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
@@ -60,13 +51,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

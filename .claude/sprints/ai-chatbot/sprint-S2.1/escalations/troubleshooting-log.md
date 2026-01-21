@@ -335,6 +335,70 @@ Removed `hasSessionCookie()` from both files. Now always call `/api/auth/me` and
 
 ---
 
+## Issue 5: 2026-01-21 - Dual Session System (Middleware Not Recognizing Custom Login)
+
+**Problem:** After logging in with email/password via custom `/api/auth/login`, middleware redirects to `/login` even with valid session cookie.
+
+**Symptoms:**
+- Login via custom endpoint returns 200 OK with user data
+- `session` cookie is set correctly
+- BUT `/dashboard` redirects to `/login` (307)
+- Middleware's `req.auth` returns `undefined`
+
+**Investigation:**
+
+1. Checked cookies saved by login:
+   ```
+   session=eyJhbGciOiJIUzI1NiJ9...
+   ```
+
+2. Middleware uses Auth.js's `auth()` function:
+   ```typescript
+   const isAuthenticated = !!req.auth;
+   ```
+
+3. Auth.js expects cookies named `__Secure-authjs.session-token`, not `session`
+
+**Root Cause:**
+
+TWO COMPETING SESSION SYSTEMS:
+
+| Login Method | Creates Cookie | Middleware Recognizes |
+|-------------|---------------|---------------------|
+| Custom `/api/auth/login` | `session` (JWT) | NO |
+| Auth.js `signIn('google')` | `__Secure-authjs.session-token` | YES |
+| Auth.js `signIn('credentials')` | `__Secure-authjs.session-token` | YES |
+
+The custom login endpoint was creating a different JWT cookie that Auth.js middleware didn't recognize.
+
+**Fix Applied:**
+
+Changed login page to use Auth.js `signIn('credentials')` instead of custom endpoint:
+
+```typescript
+// BEFORE (wrong - creates incompatible session)
+const response = await fetch('/api/auth/login', { ... });
+
+// AFTER (correct - creates Auth.js session)
+const result = await signIn('credentials', {
+  email,
+  password,
+  redirect: false,
+});
+```
+
+**Files Changed:**
+1. `app/(auth)/login/page.tsx` - Use signIn('credentials') instead of custom endpoint
+
+**Result:** FIXED
+
+**Verification:** Build passes. Deployed to Railway.
+
+**Lesson Learned:**
+When using Auth.js, ALL authentication (including email/password) should go through Auth.js's signIn function. Don't create parallel session systems - they will conflict with Auth.js middleware.
+
+---
+
 ## Summary Table
 
 | Issue | Status | Resolution |
@@ -343,3 +407,4 @@ Removed `hasSessionCookie()` from both files. Now always call `/api/auth/me` and
 | Issue 2: Test Account | RESOLVED | Account created with simpler password |
 | Issue 3: Google OAuth | RESOLVED | Google Cloud Console configuration fixed |
 | Issue 4: Dashboard Loading Bug | RESOLVED | Removed hasSessionCookie() - HttpOnly cookies invisible to JS |
+| Issue 5: Dual Session System | RESOLVED | Use Auth.js signIn('credentials') for all logins |

@@ -1,122 +1,72 @@
-'use client';
+/**
+ * SKELETON HOME PAGE - TIER 0
+ *
+ * Purpose: Simple landing page with links.
+ *
+ * Contains ONLY:
+ * - "Get Started" link -> /login
+ * - "Log In" link -> /login
+ *
+ * Does NOT contain:
+ * - Auth checks
+ * - API calls
+ * - useSession()
+ * - Conditional rendering based on auth state
+ */
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  displayName: string | null;
-}
 
 export default function Home() {
-  const router = useRouter();
-  // Start with null user - buttons render immediately, auth check updates async
-  const [user, setUser] = useState<User | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-
-  useEffect(() => {
-    // Check if user is authenticated (non-blocking - page renders immediately)
-    // Note: Always call API - HttpOnly cookies are invisible to JS but server can read them
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
-        // If not ok (401), user is not authenticated - that's fine
-      } catch {
-        // Network error - that's fine, user is not authenticated
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-      setUser(null);
-      router.refresh();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  // Render page content immediately - no loading gate
-  // Auth check happens async and will update user state when complete
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f4ed]">
-      {/* Header with logout button for authenticated users */}
-      {user && (
-        <header className="w-full p-4 flex justify-end">
-          <div className="flex items-center gap-4">
-            <span className="text-[#1e3a3a]">{user.email}</span>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-[#2d4a3e] text-[#f8f4ed] font-medium rounded-lg hover:bg-[#1e3a3a] transition-colors"
-            >
-              Log Out
-            </button>
-          </div>
-        </header>
-      )}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      fontFamily: 'system-ui, sans-serif',
+      backgroundColor: '#f5f5f5'
+    }}>
+      <h1 style={{ marginBottom: '1rem', color: '#333', fontSize: '2.5rem' }}>
+        SteerTrue
+      </h1>
+      <p style={{ marginBottom: '2rem', color: '#666' }}>
+        Skeleton - Tier 0
+      </p>
 
-      {/* Main content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          {/* Logo */}
-          <div className="mb-6">
-            <Image
-              src="/profile_image.jpg"
-              alt="SteerTrue Logo"
-              width={120}
-              height={120}
-              className="mx-auto rounded-full"
-              priority
-            />
-          </div>
-
-          <h1 className="text-4xl font-bold text-[#1e3a3a] mb-4">SteerTrue</h1>
-
-          {user ? (
-            <>
-              <p className="text-[#1e3a3a] mb-8">
-                Welcome back, {user.displayName || user.email}!
-              </p>
-              <p className="text-[#5d8a6b] text-lg">
-                Dashboard coming soon...
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[#1e3a3a] mb-8">SteerTrue, Stay True.</p>
-              <div className="space-x-4">
-                <Link
-                  href="/signup"
-                  className="inline-block px-6 py-3 bg-[#5d8a6b] text-[#f8f4ed] font-medium rounded-xl hover:bg-[#4a7559] transition-colors"
-                >
-                  Get Started
-                </Link>
-                <Link
-                  href="/login"
-                  className="inline-block px-6 py-3 border border-[#5d8a6b] text-[#5d8a6b] font-medium rounded-xl hover:bg-[#5d8a6b] hover:text-[#f8f4ed] transition-colors"
-                >
-                  Log In
-                </Link>
-              </div>
-            </>
-          )}
-        </div>
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <Link
+          href="/login"
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: '#4285F4',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          Get Started
+        </Link>
+        <Link
+          href="/login"
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: 'transparent',
+            color: '#4285F4',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            border: '1px solid #4285F4'
+          }}
+        >
+          Log In
+        </Link>
       </div>
+
+      <p style={{ marginTop: '2rem', color: '#999', fontSize: '12px' }}>
+        Google OAuth only - no email/password
+      </p>
     </div>
   );
 }
