@@ -31,26 +31,26 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      // Use Auth.js signIn for credentials - creates Auth.js session
+      // that middleware recognizes (same as Google OAuth)
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false, // Handle redirect manually for better UX
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
+      if (result?.error) {
         // GENERIC error message - no user enumeration (SC-5)
-        // Whether user doesn't exist OR password is wrong, show same message
+        // Auth.js returns error: 'CredentialsSignin' for any auth failure
         setError('Invalid credentials');
         return;
       }
 
-      // Success - redirect to dashboard
-      router.push('/dashboard');
-      router.refresh(); // Refresh to update auth state
+      if (result?.ok) {
+        // Success - redirect to dashboard
+        router.push('/dashboard');
+        router.refresh(); // Refresh to update auth state
+      }
     } catch {
       // GENERIC error - no specific information
       setError('Invalid credentials');
