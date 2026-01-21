@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(railway status:*)",
+      "Bash(railway list:*)",
+      "Skill(primer)",
+      "Skill(primer:*)",
+      "Bash(dir /B \"c:\\\\PROJECTS\\\\SINGLE PROJECTS\\\\dev_pm_branch\\\\memory\")",
+      "Bash(git -C \"c:/PROJECTS/SINGLE PROJECTS/dev_pm_branch\" status memory/projects/steertrue/WAITING_ON.md)",
+      "Bash(git -C \"c:/PROJECTS/SINGLE PROJECTS/dev_pm_branch\" diff --stat)",
+      "Bash(git -C \"c:/PROJECTS/SINGLE PROJECTS/dev_pm_branch\" log --oneline -3)",
+      "Bash(git -C \"c:/PROJECTS/SINGLE PROJECTS/dev_pm_branch\" status)",
+      "Bash(powershell:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(dir \"c:\\\\PROJECTS\\\\SINGLE PROJECTS\\\\dev_pm_branch\\\\docs\\\\design\\\\storyboarding\\\\process\" /b)",
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\PROJECTS\\\\SINGLE PROJECTS\\\\dev_pm_branch\\\\docs\\\\design\\\\storyboarding\\\\designx\\\\admin_backend\\\\phase2\\\\sprint-2.0a\\\\archive_pre_nano_banana\" -Force)",
+      "Bash(cmd.exe /c \"dir \"\"c:\\\\PROJECTS\\\\SINGLE PROJECTS\\\\dev_pm_branch\\\\docs\\\\design\\\\storyboarding\\\\designx\\\\admin_backend\\\\phase2\\\\sprint-2.0a\\\\S1_DASHBOARD_HEALTH_VISUAL_COMPOSITE.png\"\"\")",
+      "Bash(cmd.exe /c \"magick -version\")",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(git checkout:*)",
+      "Skill(pre-sprint)",
+      "Skill(pre-sprint:*)",
+      "Bash(railway whoami:*)",
+      "Bash(railway link:*)",
+      "Bash(railway add:*)"
+    ]
+  }
+}
