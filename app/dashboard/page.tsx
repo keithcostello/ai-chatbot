@@ -11,13 +11,26 @@ interface User {
   displayName: string | null;
 }
 
+// Helper to check if session cookie exists (client-side)
+function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split(';').some(c => c.trim().startsWith('session='));
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Quick check: if no session cookie, redirect immediately (no API call needed)
+      if (!hasSessionCookie()) {
+        router.push('/login');
+        return;
+      }
+
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
@@ -25,10 +38,12 @@ export default function DashboardPage() {
           setUser(data.user);
         } else {
           // Not authenticated - redirect to login
+          setAuthError('Session expired. Please log in again.');
           router.push('/login');
         }
       } catch {
         // Error checking auth - redirect to login
+        setAuthError('Unable to verify authentication.');
         router.push('/login');
       } finally {
         setIsLoading(false);
