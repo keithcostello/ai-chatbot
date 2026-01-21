@@ -1,0 +1,398 @@
+---
+description: Orchestrate a full sprint from planning through completion
+argument-hint: "<sprint-name> <sprint-goal>"
+---
+
+# Sprint Orchestrator
+
+You are orchestrating a sprint between pm-agent and dev-executor subagents.
+
+## Sprint Namespace
+
+Each sprint has its own directory:
+```
+.claude/sprints/[sprint-id]/
+├── state.md           # Sprint state (phase, iteration, etc.)
+├── checkpoints/       # DEV → PM submissions
+├── handoffs/          # PM → DEV plans and feedback
+└── escalations/       # Blocked issues, UAT
+```
+
+## State File
+
+Track state in `.claude/sprints/[sprint-id]/state.md`:
+
+```markdown
+# Sprint State: [Sprint-Name]
+
+## Sprint Info
+- **Sprint ID:** [sprint-id]
+- **Goal:** [goal]
+- **Started:** [date]
+- **Branch:** dev-[sprint-id]
+
+## Current State
+- **Phase:** [PLANNING/READY/EXECUTION/UAT_PENDING/CLOSEOUT/BLOCKED/COMPLETE]
+- **Checkpoint:** [N]
+- **Iteration:** [X]/20
+
+## Circuit Breaker Status
+- Total iterations: [X]/20
+- Rejections this checkpoint: [X]/3
+- Last error: [description or "none"]
+- Same error count: [X]/2
+
+## Last Action
+- [timestamp]: [what happened]
+
+## Next Action
+- [what's next]
+
+## Blockers
+- [list or "None"]
+
+## History
+- [timestamp]: [action]
+```
+
+## File Paths
+
+All paths are relative to `.claude/sprints/[sprint-id]/`:
+
+| File | Path |
+|------|------|
+| State | `state.md` |
+| Sprint plan | `handoffs/prompt.md` |
+| READY submission | `checkpoints/ready.md` |
+| READY review | `checkpoints/ready-review.md` |
+| Checkpoint N | `checkpoints/checkpoint-[N].md` |
+| Checkpoint N review | `checkpoints/checkpoint-[N]-review.md` |
+| Checkpoint N feedback | `handoffs/checkpoint-[N]-feedback.md` |
+| Final submission | `checkpoints/final.md` |
+| UAT pending | `escalations/uat-pending.md` |
+| UAT response | `escalations/uat-response.md` |
+| DEV blocked | `escalations/dev-blocked.md` |
+| PM blocked | `escalations/pm-blocked.md` |
+| Keith response | `escalations/keith-response.md` |
+
+## Circuit Breakers
+
+**CRITICAL: Track these limits. Stop if exceeded.**
+
+| Limit | Threshold | Action |
+|-------|-----------|--------|
+| Total iterations | 20 | STOP immediately |
+| Rejections per checkpoint | 3 | STOP, escalate to Keith |
+| Same error repeated | 2 | STOP, escalate to Keith |
+| Total phases | 10 | STOP if plan exceeds |
+
+### When Breaker Trips
+
+Write to `escalations/breaker-tripped.md`:
+```markdown
+# Circuit Breaker Tripped
+
+**Type:** [which limit hit]
+**Limit:** [threshold]
+**Current:** [actual count]
+
+## Sprint State
+- Phase: [current]
+- Checkpoint: [N]
+- Iterations: [count]
+
+## Last 3 Actions
+1. [action]
+2. [action]
+3. [action]
+
+## Options
+1. Provide guidance and resume
+2. Terminate sprint, grade as-is
+3. Reset counter (override limit)
+```
+
+Update `state.md` → phase=BLOCKED
+
+Then EXIT with message:
+```
+CIRCUIT BREAKER TRIGGERED
+
+Sprint [sprint-id] stopped. See: .claude/sprints/[sprint-id]/escalations/breaker-tripped.md
+
+To resume: Resume sprint [sprint-id]
+```
+
+**Do NOT hang. EXIT cleanly.**
+
+---
+
+## Orchestration Loop
+
+### Phase 0: Initialize
+
+1. Create sprint directory: `.claude/sprints/[sprint-id]/`
+2. Create subdirectories: `checkpoints/`, `handoffs/`, `escalations/`
+3. Create `state.md` with:
+   - Sprint ID, goal
+   - phase=PLANNING
+   - iteration=0
+   - checkpoint_rejections=0
+4. Delegate to pm-agent: "Create sprint plan for [SPRINT_NAME]: [SPRINT_GOAL]. Write to .claude/sprints/[sprint-id]/handoffs/prompt.md"
+5. When PM returns → update state to phase=READY_PENDING
+6. **Increment iteration counter**
+
+### Phase 1: READY Gate
+
+1. Delegate to dev-executor: "Read .claude/sprints/[sprint-id]/handoffs/prompt.md, submit READY to .claude/sprints/[sprint-id]/checkpoints/ready.md"
+2. **Increment iteration counter**
+3. Delegate to pm-agent: "Review .claude/sprints/[sprint-id]/checkpoints/ready.md, write decision to .claude/sprints/[sprint-id]/checkpoints/ready-review.md"
+4. **Increment iteration counter**
+5. Read PM decision:
+   - APPROVED → update state to phase=EXECUTION, checkpoint=1, reset checkpoint_rejections=0
+   - REJECTED → 
+     - Increment checkpoint_rejections
+     - Check circuit breaker (3 rejections = STOP)
+     - Delegate to dev-executor to fix and resubmit
+
+### Phase 2: Execution Loop
+
+1. Delegate to dev-executor: "Execute phase [N] per sprint plan. Write checkpoint to .claude/sprints/[sprint-id]/checkpoints/checkpoint-[N].md"
+2. **Increment iteration counter**
+3. **Check for BLOCKED in DEV response** (see Escalation Handling)
+4. Delegate to pm-agent: "Review .claude/sprints/[sprint-id]/checkpoints/checkpoint-[N].md"
+5. **Increment iteration counter**
+6. Read PM decision:
+   - APPROVED → 
+     - Reset checkpoint_rejections=0
+     - If final implementation phase → go to UAT Gate
+     - Else → checkpoint++, repeat step 1
+   - REJECTED →
+     - Increment checkpoint_rejections
+     - Check circuit breaker
+     - Write rejection feedback to `handoffs/checkpoint-[N]-feedback.md`
+     - Delegate to dev-executor with feedback
+
+### Phase 3: UAT Gate (ASYNC EXIT)
+
+**UAT is NON-NEGOTIABLE. Cannot auto-approve. Cannot skip.**
+
+1. When PM signals final implementation phase complete
+2. Write `escalations/uat-pending.md`:
+
+```markdown
+# UAT Pending
+
+**Sprint:** [sprint-id]
+**Goal:** [goal]
+**Timestamp:** [datetime]
+
+## Files to Test
+- [list files created]
+
+## Test Instructions
+[specific test cases from UAT.md]
+
+## How to Resume
+After testing, type in CLI:
+- All passed: `Sprint-[id] UAT: all passed`
+- With details: `Sprint-[id] UAT: Test 1 pass, Test 2 pass, Test 3 fail - reason`
+- Failed: `Sprint-[id] UAT failed - description of issue`
+```
+
+3. Update `state.md` → phase=PAUSED, pause_type=UAT
+4. **EXIT with message:**
+
+```
+═══════════════════════════════════════════════════════════════
+UAT REQUIRED - Sprint Paused
+═══════════════════════════════════════════════════════════════
+
+Sprint: [sprint-id]
+Goal: [goal]
+
+Test instructions written to:
+.claude/sprints/[sprint-id]/escalations/uat-pending.md
+
+After testing, write your results to:
+.claude/sprints/[sprint-id]/escalations/uat-response.md
+
+Then run: Resume sprint [sprint-id]
+
+═══════════════════════════════════════════════════════════════
+EXITED - Awaiting UAT. Resume when ready.
+═══════════════════════════════════════════════════════════════
+```
+
+**Do NOT hang. EXIT cleanly. Keith resumes later.**
+
+### Phase 4: Documentation (Post-UAT)
+
+After UAT PASS, if documentation phase needed:
+1. Delegate to dev-executor: "Create documentation for sprint. Write checkpoint to checkpoints/checkpoint-[N].md"
+2. PM validates documentation checkpoint
+3. Proceed to Closeout
+
+### Phase 5: Closeout
+
+1. Delegate to pm-agent: "Final review and grade sprint. Write to .claude/sprints/[sprint-id]/checkpoints/final.md"
+2. Update `state.md` → phase=COMPLETE
+3. Report completion with grade and summary
+4. Add branch to pending merges message
+
+```
+═══════════════════════════════════════════════════════════════
+Sprint Complete
+═══════════════════════════════════════════════════════════════
+
+Sprint: [sprint-id]
+Grade: [grade]
+
+Branch ready for merge: dev-[sprint-id]
+
+To merge: git checkout main && git merge dev-[sprint-id]
+
+═══════════════════════════════════════════════════════════════
+```
+
+---
+
+## Escalation Handling
+
+All escalations use the same async pattern: write pending file → EXIT → Keith responds via natural language → continue.
+
+### DEV Blocked
+
+If dev-executor returns with BLOCKED status:
+
+1. Write `escalations/dev-blocked.md`:
+```markdown
+# DEV Blocked
+
+**Sprint:** [sprint-id]
+**Phase:** [current]
+**Checkpoint:** [N]
+**Timestamp:** [datetime]
+
+## Blocker
+[what DEV reported]
+
+## Attempts Made
+[list what DEV tried]
+
+## How to Resume
+Type in CLI:
+- `Sprint-[id] guidance: [what to do]`
+- `Sprint-[id]: skip that feature`
+- `Sprint-[id]: terminate`
+```
+
+2. Update `state.md` → phase=PAUSED, pause_type=DEV_BLOCKED
+3. **EXIT with message:**
+```
+DEV BLOCKED - Sprint Paused
+
+Sprint: [sprint-id]
+Blocker: [brief description]
+
+See: .claude/sprints/[sprint-id]/escalations/dev-blocked.md
+
+Resume with: Sprint-[id] guidance: [your guidance]
+```
+
+### PM Question
+
+If pm-agent needs user decision:
+
+1. Write `escalations/pm-question.md`:
+```markdown
+# PM Question
+
+**Sprint:** [sprint-id]
+**Phase:** [current]
+**Timestamp:** [datetime]
+
+## Question
+[what PM needs decided]
+
+## Options
+[list options if applicable]
+
+## How to Resume
+Type in CLI:
+- `Sprint-[id] decision: [your choice]`
+- `Sprint-[id]: go with option 1`
+```
+
+2. Update `state.md` → phase=PAUSED, pause_type=PM_QUESTION
+3. **EXIT with message:**
+```
+PM QUESTION - Sprint Paused
+
+Sprint: [sprint-id]
+Question: [brief description]
+
+See: .claude/sprints/[sprint-id]/escalations/pm-question.md
+
+Resume with: Sprint-[id] decision: [your answer]
+```
+
+### Scope Clarification
+
+If requirements are ambiguous:
+
+1. Write `escalations/scope-question.md`
+2. Update `state.md` → phase=PAUSED, pause_type=SCOPE
+3. **EXIT with resume instructions**
+
+Resume: `Sprint-[id] scope: include X, exclude Y`
+
+---
+
+## Multi-Sprint Support
+
+Each CLI session handles one sprint. Multiple sprints run in parallel via separate CLI sessions.
+
+To see all sprints:
+```bash
+ls -la .claude/sprints/
+```
+
+Each sprint is fully isolated in its namespace.
+
+---
+
+## Quick Reference
+
+**Start sprint:**
+```
+Run sprint orchestrator for "Sprint-X.0" with goal "[goal]"
+```
+
+**Resume patterns (natural language):**
+```
+Sprint-6.0 UAT: all passed
+Sprint-6.0 UAT failed - reason
+Sprint-6.0 guidance: try this instead
+Sprint-6.0 decision: use option A
+Sprint-6.0 scope: include X, exclude Y
+Sprint-6.0: terminate
+Sprint-6.0: reset and continue
+```
+
+**Check status:**
+```
+cat .claude/sprints/sprint-x.0/state.md
+```
+
+**Hard Stops (EXIT, don't hang):**
+- Circuit breaker tripped
+- UAT gate reached
+- DEV or PM blocked
+- Any escalation
+
+**Never:**
+- Hang waiting for input
+- Skip UAT gate
+- Ignore circuit breakers
+- Continue after 20 iterations

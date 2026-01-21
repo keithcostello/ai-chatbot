@@ -1,0 +1,624 @@
+---
+description: Resume a paused sprint with UAT results, merge decisions, guidance, or scope clarification
+argument-hint: "<sprint-id> <type>: <response>"
+---
+
+# Resume Sprint V2.3
+
+## Version History
+| Version | Date | Changes |
+|---------|------|---------|
+| V1.0 | 2025-12-05 | Initial |
+| V1.1 | 2025-12-06 | Added merge gate handling |
+| V1.2 | 2025-12-06 | YAML output templates |
+| V2.0 | 2025-12-17 | V3.0 agent resume types: uat-question, human-override, arbitrate |
+| V2.1 | 2025-12-18 | V3.1 position-based resume: resume-from: [phase.step] for process break recovery |
+| V2.2 | 2025-12-23 | V3.3 Truth Auditor as mandatory relay - all agent handoffs audited before processing |
+| V2.3 | 2025-12-23 | V3.4 Anti-fabrication countermeasures: sprint echo, UTC timestamps, literal output, path verification |
+
+Resume a sprint that was paused for any reason requiring human input.
+
+## Pause Types
+
+| Type | Pending File | Resume Pattern | Phase |
+|------|--------------|----------------|-------|
+| UAT | `uat-pending.md` | `Sprint-X UAT: all passed` | Phase 5 |
+| **UAT Question (V3.0)** | `uat-question.md` | `Sprint-X uat-answer: [answer]` | Phase 5 |
+| **Human Override (V3.0)** | `uat-notification.md` | `Sprint-X human-override: [reason]` | Phase 5 |
+| **Validator Dispute (V3.0)** | `validator-dispute.md` | `Sprint-X arbitrate: [dev/validator]` | Any |
+| Merge | `merge-pending.md` | `Sprint-X merge: approved` | Phase 7 |
+| PM Question | `pm-question.md` | `Sprint-X decision: use Y` | Any |
+| DEV Blocked | `dev-blocked.md` | `Sprint-X guidance: try Z` | Any |
+| Circuit Breaker | `breaker-tripped.md` | `Sprint-X: reset and continue` | Any |
+
+## TRUTH AUDITOR AS MANDATORY RELAY (V3.4)
+
+**All agent handoffs during resume MUST be relayed through Truth Auditor.**
+
+Same rules as run-sprint.md:
+- No direct agent-to-agent handoffs
+- Every Task() response audited before processing
+- If VIOLATION → HALT, do not proceed
+
+### ANTI-FABRICATION COUNTERMEASURES (V3.4)
+
+All relay audits must include:
+
+1. **CURRENT_SPRINT echo** - Agent prompt includes sprint ID, response echoes it back
+2. **UTC-only timestamps** - All timestamps use Z suffix, no timezone math
+3. **Literal tool output** - Truth Auditor pastes actual bash/read output, no summaries
+4. **Path echo verification** - Truth Auditor states exact path checked
+5. **Timestamp drift check** - Auditor compares own timestamp to orchestrator's (<2 min drift)
+
+See run-sprint.md "ANTI-FABRICATION COUNTERMEASURES" section for full details.
+
+---
+
+## Resume Logic
+
+### Step 0: Context Recovery (MANDATORY FIRST)
+
+**Before any other action:**
+
+1. Read `.claude/sprints/mlaia/sprint-[id]/CONTEXT.md` (30 lines - fully internalize)
+
+2. **CONTEXT ECHO (MANDATORY):**
+
+   Output this block EXACTLY before proceeding:
+
+   ```yaml
+   CONTEXT_ECHO:
+     sprint_id: [from CONTEXT.md line 4]
+     branch: [from CONTEXT.md line 6]
+     deployment_url: [from CONTEXT.md line 8]
+     test_command: [from CONTEXT.md line 10]
+     pause_type: [from state.md]
+     return_position: [from state.md if applicable]
+   ```
+
+   Missing or incorrect echo = PROCESS_BREAK
+
+3. Verify branch: `git branch --show-current`
+
+4. Compare to expected branch in CONTEXT.md
+
+5. If MISMATCH → STOP, do not proceed, report violation
+
+6. **RELAY AUDIT (Context Recovery) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - Resume Context Recovery
+
+   proof_nonce: {relay_nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## Orchestrator's CONTEXT_ECHO
+   {context_echo_output}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Read CONTEXT.md - do values match echo?
+   2. Read state.md - does pause_type match?
+   3. Run git branch --show-current - does it match?
+   4. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+**Why this matters:**
+
+- Fresh agents have no memory between checkpoints
+- CONTEXT.md is 30 lines of critical info (branch, URL, paths)
+- Without this, agents make basic mistakes (wrong branch, wrong URL)
+
+### From UAT_PENDING (Legacy - Before V3.0)
+
+1. Parse result from input (PASS/FAIL)
+2. Write `escalations/uat-response.md`
+3. If PASS → Continue to closeout → merge gate
+4. If FAIL → Route to dev-executor for fixes → Back to UAT gate
+
+### From UAT_QUESTION_PENDING (V3.0)
+
+**Trigger:** Human-UAT AI asked a clarifying question
+
+1. Parse answer from input
+2. Write answer to `escalations/uat-answer.md`
+3. Re-delegate to Human-UAT AI with the answer:
+
+   ```python
+   nonce = secrets.token_hex(4)
+
+   uat_response = Task(subagent_type="human-uat-executor", model="opus", prompt="""
+   proof_nonce: {nonce}
+
+   Continuing UAT EXECUTION for Sprint [sprint-id].
+
+   Your previous question was:
+   [question from uat-question.md]
+
+   Human's answer:
+   [answer from input]
+
+   Based on this answer, complete your test execution and return PASS or FAIL.
+   You cannot ask another question.
+   """)
+   ```
+
+4. **RELAY AUDIT (Human-UAT AI Final) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - Human-UAT AI Final Decision
+
+   proof_nonce: {relay_nonce}
+   source_nonce: {nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## Human-UAT AI Response
+   {uat_response}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Is result PASS or FAIL (not ASK)?
+   2. Did Human-UAT AI run tests (grep for curl output)?
+   3. Does response contain nonce_received: {nonce}?
+   4. Is evidence actual output or summarized?
+   5. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+5. Log AUDITED result to `agent-log.md`
+6. If PASS → Write notification, continue to Phase 6
+7. If FAIL → Return to DEV with failure reason
+8. If ASK (violation) → BLOCK: "Human-UAT AI violated 1-question limit"
+
+### From HUMAN_OVERRIDE (V3.0)
+
+**Trigger:** Human manually tested after Human-UAT AI PASS and found issue
+
+1. Parse override reason from input
+2. Write `escalations/human-override.md` with reason
+3. Update state → phase=UAT_FIX_PENDING
+4. Route to DEV with relay audit:
+
+   ```python
+   nonce = secrets.token_hex(4)
+
+   dev_response = Task(subagent_type="dev-executor", prompt=f"""
+   proof_nonce: {nonce}
+
+   HUMAN UAT OVERRIDE - Issue Found
+
+   Human manually tested after AI approval and found issue:
+   [reason from input]
+
+   You must submit a FIX_REVIEW proposal. DO NOT implement without PM approval.
+   """)
+   ```
+
+5. **RELAY AUDIT (DEV Override Response) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - DEV to Orchestrator (Human Override Fix)
+
+   proof_nonce: {relay_nonce}
+   source_nonce: {nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## DEV Response to Audit
+   {dev_response}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Did DEV submit FIX_REVIEW proposal (not implement directly)?
+   2. Does response contain nonce_received: {nonce}?
+   3. Does FIX_REVIEW exist in checkpoints?
+   4. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+6. DEV must submit FIX_REVIEW proposal
+7. Continue with FIX_REVIEW protocol (with relay audits for PM review)
+
+### From ARBITRATION_PENDING (V3.0)
+
+**Trigger:** DEV disputed Escalation Validator's ANSWER_EXISTS citation
+
+1. Parse arbitration decision from input (dev/validator)
+2. Write `escalations/arbitration-response.md`
+3. If decision = `dev`:
+   - DEV was correct, answer genuinely not in docs
+   - Write `escalations/dev-blocked.md`
+   - Update state → phase=PAUSED
+   - Output BLOCKED template for human guidance
+   - END
+
+4. If decision = `validator`:
+   - Validator was correct, DEV missed the answer
+   - Return to DEV with relay audit:
+
+   ```python
+   nonce = secrets.token_hex(4)
+
+   dev_response = Task(subagent_type="dev-executor", prompt=f"""
+   proof_nonce: {nonce}
+
+   ARBITRATION RESULT: Validator Correct
+
+   The arbitration found the answer exists at: [file:line from validator]
+
+   Re-read the cited location and continue with your work.
+   """)
+   ```
+
+   - **RELAY AUDIT (DEV Arbitration Response) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - DEV to Orchestrator (Post-Arbitration)
+
+   proof_nonce: {relay_nonce}
+   source_nonce: {nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## DEV Response to Audit
+   {dev_response}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Does response contain nonce_received: {nonce}?
+   2. Did DEV acknowledge the cited location?
+   3. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+   - Update state → phase=EXECUTION
+   - Continue orchestration
+
+### From MERGE_PENDING
+
+1. Parse decision from input (approved/denied)
+2. Write `escalations/merge-response.md`
+3. If APPROVED:
+   ```bash
+   git checkout main
+   git merge dev-[sprint-id]
+   git push origin main
+   git branch -d dev-[sprint-id]
+   ```
+4. Output SPRINT_COMPLETE template
+5. END
+
+### From DEV_BLOCKED / PM_BLOCKED
+
+1. Parse guidance from input
+2. Write `escalations/[type]-response.md`
+3. Route guidance to appropriate agent with relay audit:
+
+   **For DEV_BLOCKED:**
+
+   ```python
+   nonce = secrets.token_hex(4)
+
+   dev_response = Task(subagent_type="dev-executor", prompt=f"""
+   proof_nonce: {nonce}
+
+   GUIDANCE FROM HUMAN
+
+   Your block was reviewed. Here is guidance:
+   [guidance from input]
+
+   Continue with your work using this guidance.
+   """)
+   ```
+
+   **RELAY AUDIT (DEV Guidance Response) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - DEV to Orchestrator (Post-Guidance)
+
+   proof_nonce: {relay_nonce}
+   source_nonce: {nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## DEV Response to Audit
+   {dev_response}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Does response contain nonce_received: {nonce}?
+   2. Did DEV acknowledge the guidance?
+   3. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+   **For PM_BLOCKED:** (same pattern with pm-agent)
+
+   ```python
+   nonce = secrets.token_hex(4)
+
+   pm_response = Task(subagent_type="pm-agent", prompt=f"""
+   proof_nonce: {nonce}
+
+   GUIDANCE FROM HUMAN
+
+   Your block was reviewed. Here is guidance:
+   [guidance from input]
+
+   Continue with your work using this guidance.
+   """)
+   ```
+
+   **RELAY AUDIT (PM Guidance Response) - MANDATORY:**
+
+   ```python
+   # UTC timestamp only (V3.4)
+   timestamp = Bash("powershell -Command \"Get-Date -Format 'yyyy-MM-ddTHH:mm:ss.fffZ' -AsUTC\"")
+   relay_nonce = secrets.token_hex(4)
+
+   relay_result = Task(subagent_type="truth-auditor", model="sonnet", prompt=f"""
+   RELAY AUDIT - PM to Orchestrator (Post-Guidance)
+
+   proof_nonce: {relay_nonce}
+   source_nonce: {nonce}
+   timestamp: {timestamp}
+   CURRENT_SPRINT: {sprint_id}
+   SPRINT_PATH: .claude/sprints/mlaia/sprint-{sprint_id}/
+
+   ## PM Response to Audit
+   {pm_response}
+
+   ## Verify with YOUR OWN tool calls (PASTE ACTUAL OUTPUT):
+   1. Does response contain nonce_received: {nonce}?
+   2. Did PM acknowledge the guidance?
+   3. Get YOUR timestamp - is drift from orchestrator < 2 min?
+
+   ## REQUIRED IN RESPONSE:
+   - SPRINT_ECHO: [echo back sprint ID]
+   - PATH_I_CHECKED: [exact path you read]
+   - MY_TIMESTAMP: [your own timestamp]
+   - Literal tool output blocks (not summaries)
+
+   Return: CLEAN or VIOLATION
+   """)
+
+   if "VIOLATION" in relay_result:
+       HALT_RESUME()
+
+   # V3.4: Verify sprint echo in response
+   if f"sprint-{sprint_id}" not in relay_result:
+       HALT_RESUME(reason="Truth Auditor did not echo sprint ID")
+   ```
+
+4. Continue orchestration
+
+### From BREAKER
+
+1. Parse decision (reset/terminate)
+2. If reset → clear counter, continue
+3. If terminate → go to closeout
+
+### Cancel Action
+
+1. Write `escalations/cancelled.md`
+2. Update state → phase=CANCELLED
+3. Output:
+```yaml
+event: CANCELLED
+sprint: [sprint-id]
+reason: [reason]
+phase_at_cancel: [phase]
+work_completed:
+  - [item]
+```
+4. END
+
+### Hold Action
+
+1. Write `escalations/on-hold.md`
+2. Update state → phase=ON_HOLD
+3. Output:
+```yaml
+event: ON_HOLD
+sprint: [sprint-id]
+reason: [reason]
+phase_at_hold: [phase]
+resume: "Sprint-[id] resume"
+```
+4. END
+
+### Resume from Hold
+
+1. Read state to find phase before hold
+2. Update state → phase=(previous phase)
+3. Continue orchestration
+
+### Resume from Position (V3.1)
+
+**Trigger:** Process break recovery - jump to exact step
+
+**Input pattern:** `Sprint-X resume-from: [phase.step]`
+
+1. Parse position from input (e.g., `3.4`)
+2. Validate position exists in run-sprint.md steps
+3. Read CONTEXT.md
+4. Verify branch
+5. Validate position matches state.md `return_to_position`
+6. Output position confirmation:
+   ```yaml
+   event: POSITION_RESUME
+   sprint: [sprint-id]
+   position: [phase.step]
+   step_name: [description]
+   status: RESUMING
+   ```
+7. Jump to exact step in run-sprint.md
+8. Continue normal flow
+
+## Input Patterns
+
+```
+# Legacy (pre-V3.0)
+Sprint-X.0 UAT: all passed
+Sprint-X.0 UAT failed - [reason]
+
+# V3.0 Agent Resume Types
+Sprint-X.0 uat-answer: [answer to Human-UAT AI question]
+Sprint-X.0 human-override: [reason why AI approval was wrong]
+Sprint-X.0 arbitrate: dev          # DEV was correct, answer not in docs
+Sprint-X.0 arbitrate: validator    # Validator was correct, DEV missed it
+
+# Standard Types
+Sprint-X.0 merge: approved
+Sprint-X.0 merge: denied - [reason]
+Sprint-X.0 guidance: [instruction]
+Sprint-X.0 decision: [choice]
+Sprint-X.0 hold: [reason]
+Sprint-X.0 resume
+Sprint-X.0 cancel: [reason]
+Sprint-X.0: terminate
+
+# Position-based Resume (V3.1)
+Sprint-X.0 resume-from: 3.4    # Resume at Phase 3, Step 4
+Sprint-X.0 resume-from: 5.2    # Resume at Phase 5, Step 2
+```
+
+## Error Handling
+
+**Sprint not found:**
+```yaml
+event: ERROR
+error: "Sprint not found"
+available_sprints:
+  - [sprint-id]: [status]
+```
+
+**Can't parse input:**
+```yaml
+event: ERROR
+error: "Could not parse input"
+examples:
+  - "Sprint-X UAT: all passed"
+  - "Sprint-X merge: approved"
+  - "Sprint-X guidance: [instruction]"
+```
+
+## Quick Reference
+
+| Action | Input Pattern | Result |
+|--------|---------------|--------|
+| UAT passed (legacy) | `Sprint-X UAT: all passed` | → closeout → merge gate |
+| UAT failed (legacy) | `Sprint-X UAT failed - reason` | → DEV fixes → UAT gate |
+| **Answer UAT question (V3.0)** | `Sprint-X uat-answer: [answer]` | → Human-UAT AI decides PASS/FAIL |
+| **Override AI approval (V3.0)** | `Sprint-X human-override: [reason]` | → DEV fixes → FIX_REVIEW |
+| **Arbitrate dispute (V3.0)** | `Sprint-X arbitrate: dev/validator` | → Resume or block |
+| Merge approved | `Sprint-X merge: approved` | → merge to main → COMPLETE |
+| Merge denied | `Sprint-X merge: denied - reason` | → branch preserved → COMPLETE |
+| Guidance | `Sprint-X guidance: try Z` | → agent retries |
+| Cancel | `Sprint-X cancel: reason` | → CANCELLED |
+| Hold | `Sprint-X hold: reason` | → ON_HOLD |
+| Resume | `Sprint-X resume` | → continue from hold |
+| **Resume from position (V3.1)** | `Sprint-X resume-from: 3.4` | → jump to exact step |
