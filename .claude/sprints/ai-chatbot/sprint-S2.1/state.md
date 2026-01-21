@@ -35,12 +35,12 @@
 - Required: AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET
 
 ## Last Action
-- 2026-01-21T08:29:00.963Z: Scope change recorded, documentation updated
+- 2026-01-21T09:04:14.174Z: Logo + tagline deployed, UAT Gate ready
 
 ## Next Action
-- User provides Google OAuth credentials (Client ID + Secret)
-- DEV implements Google OAuth provider in Auth.js
-- Full UAT re-run (email/password + Google OAuth)
+- Human UAT: Test all authentication flows on Railway URL
+- Approve: `Sprint-S2.1 UAT: PASS`
+- Reject: `Sprint-S2.1 UAT: FAIL - [reason]`
 
 ## History
 - 2026-01-21T06:51:21.552Z: Sprint S2.1 orchestration started

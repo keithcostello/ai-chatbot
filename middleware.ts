@@ -8,9 +8,7 @@ const SESSION_COOKIE_NAME = 'session';
 const publicRoutes = [
   '/login',
   '/signup',
-  '/api/auth/login',
-  '/api/auth/signup',
-  '/api/auth/logout',
+  '/api/auth',  // All Auth.js routes - they handle their own security
   '/api/health',
 ];
 
