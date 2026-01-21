@@ -8,6 +8,7 @@ const { auth } = NextAuth(authConfig);
 
 // Routes that don't require authentication
 const publicRoutes = [
+  '/',         // Home page - landing page for unauthenticated users
   '/login',
   '/signup',
   '/api/auth',  // All Auth.js routes - they handle their own security
