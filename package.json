@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.1",
     "jose": "^6.1.3",
