@@ -10,20 +10,20 @@
 ## Phase 0: Architect Consultation
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| ISSUE-001 | Read `.claude/agents/pydantic_architect.md`, extract patterns | [ ] | Extract Agent Definition, structured output patterns |
-| ISSUE-002 | Read `.claude/agents/copilot_kit.md`, extract patterns | [ ] | Extract useCopilotReadable, CopilotChat patterns |
-| ISSUE-003 | Document key patterns summary from each architect | [ ] | Required before any code |
+| ISSUE-001 | Read `.claude/agents/pydantic_architect.md`, extract patterns | [x] | COMPLETE - Extracted Pydantic V2 strictness, structured generation, Field descriptions |
+| ISSUE-002 | Read `.claude/agents/copilot_kit.md`, extract patterns | [x] | COMPLETE - Extracted useCopilotReadable, useCopilotAction, useCoAgent patterns |
+| ISSUE-003 | Document key patterns summary from each architect | [x] | COMPLETE - See checkpoint-3.md |
 
 ---
 
 ## Phase 1: Database Schema
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| ISSUE-004 | Create `db/schema/conversations.ts` with Drizzle schema | [ ] | FK to users table |
-| ISSUE-005 | Create `db/schema/messages.ts` with Drizzle schema | [ ] | FK to conversations, role CHECK constraint |
-| ISSUE-006 | Run backup: `pg_dump -Fc > backup_pre_s2.2_*.dump` | [ ] | REQUIRED before migration |
-| ISSUE-007 | Run migration: `npx drizzle-kit push` | [ ] | Apply schema to database |
-| ISSUE-008 | Verify tables with `\d conversations` and `\d messages` | [ ] | Confirm FKs and constraints |
+| ISSUE-004 | Create `db/schema/conversations.ts` with Drizzle schema | [x] | COMPLETE - FK to users table defined at line 7 |
+| ISSUE-005 | Create `db/schema/messages.ts` with Drizzle schema | [x] | COMPLETE - FK to conversations at line 7 |
+| ISSUE-006 | Run backup: `pg_dump -Fc > backup_pre_s2.2_*.dump` | [ ] | BLOCKED - Requires DATABASE_URL access |
+| ISSUE-007 | Run migration: `npx drizzle-kit push` | [ ] | BLOCKED - Requires DATABASE_URL access |
+| ISSUE-008 | Verify tables with `\d conversations` and `\d messages` | [ ] | BLOCKED - Waiting for migration |
 
 ---
 
@@ -173,6 +173,9 @@
 | Date | Issue | Change | Reason |
 |------|-------|--------|--------|
 | 2026-01-22 | All | Initial creation | Sprint S2.2 kickoff |
+| 2026-01-22 | ISSUE-001,002,003 | Marked COMPLETE | Phase 0 architect consultation done |
+| 2026-01-22 | ISSUE-004,005 | Marked COMPLETE | Schema files created |
+| 2026-01-22 | ISSUE-006,007,008 | Marked BLOCKED | Requires DATABASE_URL env var |
 
 ---
 
