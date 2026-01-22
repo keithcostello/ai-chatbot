@@ -7,8 +7,8 @@ HOW: Read KEY LESSONS and ANTI-PATTERNS before starting work. Reference REQUIRED
 # LESSONS LEARNED - ai-chatbot Sprints
 
 **Created:** 2026-01-21
-**Last Updated:** 2026-01-21
-**Sprints Covered:** S2.1
+**Last Updated:** 2026-01-22
+**Sprints Covered:** S2.1, S2.2
 
 ---
 
@@ -390,6 +390,176 @@ Command: agent-browser console-errors (or manual DevTools check)
 Expected: No errors
 Actual: [none / list errors]
 ```
+
+---
+
+## SPRINT S2.2 SPECIFIC LEARNINGS
+
+### What Went Wrong
+
+1. **Dependency conflict blocked deployment** - Railway `npm ci` failed since Phase 4
+2. **Local build masked problem** - `npm install` succeeded with warnings, `npm ci` failed
+3. **No deployment verification** - DEV/PM approved phases without Railway build check
+4. **Subagent governance gap** - Agents approved without L2/proof_enforcement firing
+5. **Building on broken foundation** - Phases 4 and 5 built on failed Phase 3A deployment
+
+### L9: Local npm install != Railway npm ci
+
+**Lesson:** `npm install` is lenient with peer dependencies. `npm ci` enforces strict resolution.
+
+**Example from S2.2:**
+- `npm install @copilotkit/runtime + @anthropic-ai/sdk@0.71.2` - warnings but succeeds
+- `npm ci` (Railway) - ERESOLVE error, build fails
+- DEV never ran `npm ci` locally to simulate Railway
+
+**Rule:** After adding ANY new dependency, run `npm ci` locally before claiming "build works."
+
+---
+
+### L10: Subagent Governance Is Trigger-Based
+
+**Lesson:** Subagents spawned via Task tool DO receive governance, but blocks only fire if prompt triggers them.
+
+**How it works:**
+1. PreToolUse hook intercepts Task tool call
+2. Hook extracts subagent prompt
+3. SteerTrue API evaluates triggers against prompt
+4. Only matching blocks are injected
+5. Blocks also decay over session
+
+**Example from S2.2:**
+- DEV agent receives prompt about "build chat endpoint"
+- L2/proof_enforcement triggers on "review", "approve", "validate" keywords
+- If prompt doesn't contain these, L2 doesn't fire
+- Subagent approves without proof enforcement
+
+**Rule:** When spawning approval-related subagents, include trigger keywords in prompt:
+- "REVIEW and VALIDATE the checkpoint"
+- "VERIFY deployment proof exists"
+- "APPROVE only with evidence"
+
+---
+
+### L11: Verify Deployment Between EVERY Phase
+
+**Lesson:** Code review approval is not deployment approval.
+
+**Process gap in S2.2:**
+- Phase 4: Code review APPROVED (local build passes)
+- Phase 4: Deployment FAILED (npm ci error)
+- Phase 5: Built on Phase 4 code
+- Phase 5: Also failed deployment
+- UAT: All blocked because nothing deployed
+
+**Rule:** Between phases:
+```bash
+git push origin branch
+railway redeploy -y
+sleep 60  # Wait for build
+curl https://[url]/api/health  # Verify deployed
+railway logs  # Check for errors
+```
+
+Only proceed to next phase if deployment succeeds.
+
+---
+
+### AP6: "It Builds Locally, It Will Deploy"
+
+**Pattern:** DEV runs `npm run build`, it passes, assumes Railway will work.
+
+**Reality:** Railway uses `npm ci` which:
+- Deletes node_modules
+- Installs from lock file only
+- Enforces peer dependency resolution
+- Fails on conflicts local npm ignores
+
+**Correction:** Before approving any phase with dependency changes:
+```bash
+rm -rf node_modules
+npm ci  # Simulate Railway
+```
+
+---
+
+### PG5: No Deployment Gate Between Phases
+
+**Gap:** PM approved code without verifying Railway deployment succeeded.
+
+**Fix:** Add to PM checkpoint validation:
+```markdown
+## DEPLOYMENT VERIFICATION (MANDATORY)
+- Railway build succeeded: [YES/NO with timestamp]
+- Health endpoint responds: [curl output]
+- No errors in Railway logs: [evidence]
+```
+
+Cannot approve if deployment failed.
+
+---
+
+### PG6: Subagent Prompts Missing Proof Triggers
+
+**Gap:** Subagent prompts like "Review this code" don't trigger L2/proof_enforcement.
+
+**Fix:** Include explicit trigger keywords in subagent prompts:
+```
+"VALIDATE this checkpoint. VERIFY deployment proof. APPROVE only with evidence."
+```
+
+This ensures governance blocks fire for approval-related tasks.
+
+---
+
+### PG7: Subagent Governance Is NOT Guaranteed (CRITICAL)
+
+**Gap:** Subagent governance depends on prompt triggers. This is UNACCEPTABLE.
+
+**Reality:** Governance must be UNCONDITIONAL for all subagents. The current trigger-based system means:
+- DEV agents can approve without L2/proof_enforcement
+- PM agents can approve without evidence requirements
+- UAT agents can pass without verification blocks
+
+**Fix Required:** Subagent hook MUST inject governance unconditionally, not based on prompt content. This is a system architecture issue that must be fixed before any sprint work resumes.
+
+---
+
+### PG8: Orchestrator Writing Code (VIOLATION)
+
+**Gap:** Orchestrator directly edited package.json and ran npm commands instead of spawning DEV agent.
+
+**Rule:** Orchestrator ONLY orchestrates. All code work must be done by:
+- DEV agent for implementation
+- PM agent for validation
+- Orchestrator spawns and coordinates, never executes
+
+**Violation in S2.2:** Orchestrator ran `Edit` tool on package.json to fix dependency. This should have been a DEV task.
+
+---
+
+### L12: Invalid Work Cascades
+
+**Lesson:** Work built on failed deployment is ALL invalid.
+
+**Example from S2.2:**
+- Phase 3A: Deployment failed (unknown at time)
+- Phase 4: Built on Phase 3A (also invalid)
+- Phase 5: Built on Phase 4 (also invalid)
+- Fix commit: Built on Phase 5 (also invalid)
+
+**Rule:** If deployment fails, STOP. Do not proceed to next phase. All subsequent work is wasted effort.
+
+---
+
+### L13: "Trigger-Based" Is NOT Governance
+
+**Lesson:** Governance that only fires sometimes is not governance.
+
+**Anti-pattern in S2.2:** Investigation concluded subagent governance "works" because hook exists and "fires on triggers." This is rationalization.
+
+**Reality:** If L2/proof_enforcement doesn't fire for DEV/PM approval tasks, those agents operate UNGOVERNED. This is a system failure, not acceptable behavior.
+
+**Rule:** Governance must be unconditional. No exceptions.
 
 ---
 
