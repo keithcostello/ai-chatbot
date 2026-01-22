@@ -6,6 +6,98 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// SteerTrue API configuration
+const STEERTRUE_API_URL = process.env.STEERTRUE_API_URL;
+const STEERTRUE_TIMEOUT_MS = 5000; // 5 second timeout per CONTEXT.md Section 5
+
+// Fallback system prompt when SteerTrue is unavailable
+// Per CONTEXT.md Section 5
+const FALLBACK_SYSTEM_PROMPT = `You are a helpful AI assistant.
+Note: Governance system temporarily unavailable. Operating in fallback mode.
+Respond helpfully while maintaining safety guidelines.`;
+
+// SteerTrue response type
+interface SteerTrueResponse {
+  system_prompt: string;
+  blocks_injected: string[];
+  session_id: string;
+}
+
+// Call SteerTrue /api/v1/analyze endpoint
+// Returns system_prompt and blocks_injected, or fallback values on failure
+async function callSteerTrue(
+  message: string,
+  sessionId: string
+): Promise<{ systemPrompt: string; blocksInjected: string[] }> {
+  // If no SteerTrue URL configured, use fallback
+  if (!STEERTRUE_API_URL) {
+    console.warn('STEERTRUE_API_URL not configured, using fallback');
+    return {
+      systemPrompt: FALLBACK_SYSTEM_PROMPT,
+      blocksInjected: ['FALLBACK/not_configured'],
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), STEERTRUE_TIMEOUT_MS);
+
+    const response = await fetch(`${STEERTRUE_API_URL}/api/v1/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: message,
+        session_id: sessionId,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Handle non-200 responses (5xx errors)
+    if (!response.ok) {
+      console.error(`SteerTrue returned ${response.status}: ${response.statusText}`);
+      return {
+        systemPrompt: FALLBACK_SYSTEM_PROMPT,
+        blocksInjected: ['FALLBACK/steertrue_error'],
+      };
+    }
+
+    const data: SteerTrueResponse = await response.json();
+
+    // Validate response has required fields
+    if (!data.system_prompt || !Array.isArray(data.blocks_injected)) {
+      console.error('SteerTrue response missing required fields');
+      return {
+        systemPrompt: FALLBACK_SYSTEM_PROMPT,
+        blocksInjected: ['FALLBACK/invalid_response'],
+      };
+    }
+
+    return {
+      systemPrompt: data.system_prompt,
+      blocksInjected: data.blocks_injected,
+    };
+  } catch (error) {
+    // Handle timeout (AbortError) or other fetch errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('SteerTrue request timed out after', STEERTRUE_TIMEOUT_MS, 'ms');
+      return {
+        systemPrompt: FALLBACK_SYSTEM_PROMPT,
+        blocksInjected: ['FALLBACK/timeout'],
+      };
+    }
+
+    console.error('SteerTrue request failed:', error);
+    return {
+      systemPrompt: FALLBACK_SYSTEM_PROMPT,
+      blocksInjected: ['FALLBACK/steertrue_error'],
+    };
+  }
+}
+
 export async function POST(req: Request) {
   // Verify authentication
   const session = await auth();
@@ -26,17 +118,24 @@ export async function POST(req: Request) {
       );
     }
 
+    // Use user ID as session identifier for SteerTrue
+    const sessionId = session.user.id || session.user.email || 'anonymous';
+
+    // Call SteerTrue BEFORE Anthropic call (Phase 3A requirement)
+    const { systemPrompt, blocksInjected } = await callSteerTrue(message, sessionId);
+
     // Create streaming response using SSE
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Use Anthropic streaming API
+          // Use Anthropic streaming API with SteerTrue system prompt
           // Reference: https://docs.anthropic.com/en/api/streaming
           const messageStream = anthropic.messages.stream({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1024,
+            system: systemPrompt, // Use SteerTrue composed system prompt
             messages: [
               {
                 role: 'user',
@@ -65,9 +164,10 @@ export async function POST(req: Request) {
           // Wait for stream to complete
           const finalMessage = await messageStream.finalMessage();
 
-          // Send done event with metadata
+          // Send done event with metadata including blocksInjected (Phase 3A requirement)
           const doneData = JSON.stringify({
             type: 'done',
+            blocksInjected: blocksInjected, // Include governance blocks from SteerTrue
             totalTokens:
               (finalMessage.usage?.input_tokens || 0) +
               (finalMessage.usage?.output_tokens || 0),
