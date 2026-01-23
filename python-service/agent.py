@@ -34,7 +34,7 @@ def create_chat_agent(system_prompt: str = "") -> Agent[None, ChatResponse]:
     # Note: Pydantic AI uses ANTHROPIC_API_KEY from environment automatically
     return Agent(
         f"anthropic:{ANTHROPIC_MODEL}",
-        result_type=ChatResponse,
+        output_type=ChatResponse,
         system_prompt=system_prompt or "You are a helpful AI assistant.",
     )
 

@@ -130,7 +130,8 @@ class SteerTrueClient:
     async def analyze(
         self,
         message: str,
-        session_id: str
+        session_id: str,
+        user_id: str
     ) -> tuple[str, list[str]]:
         """
         Call SteerTrue /api/v1/analyze endpoint.
@@ -156,7 +157,8 @@ class SteerTrueClient:
                 f"{self.base_url}/api/v1/analyze",
                 json={
                     "message": message,
-                    "session_id": session_id
+                    "session_id": session_id,
+                    "user_id": user_id
                 }
             )
 

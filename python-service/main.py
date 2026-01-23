@@ -126,7 +126,8 @@ async def health_check() -> HealthResponse:
 
 async def generate_sse_stream(
     message: str,
-    session_id: str
+    session_id: str,
+    user_id: str
 ) -> AsyncGenerator[str, None]:
     """
     Generate SSE stream for chat response.
@@ -138,7 +139,8 @@ async def generate_sse_stream(
         # Get governance from SteerTrue
         system_prompt, blocks_injected = await steertrue_client.analyze(
             message=message,
-            session_id=session_id
+            session_id=session_id,
+            user_id=user_id
         )
 
         logger.info(
@@ -181,8 +183,13 @@ async def chat(
     if not session_id:
         session_id = "anonymous"
 
+    # Extract user_id from session_context (required for SteerTrue)
+    user_id = "anonymous"
+    if request.session_context:
+        user_id = request.session_context.get("user_id", "anonymous")
+
     logger.info(
-        f"Chat request - session: {session_id}, "
+        f"Chat request - session: {session_id}, user: {user_id}, "
         f"message length: {len(request.message)}"
     )
 
@@ -200,7 +207,8 @@ async def chat(
     return StreamingResponse(
         generate_sse_stream(
             message=request.message,
-            session_id=session_id
+            session_id=session_id,
+            user_id=user_id
         ),
         media_type="text/event-stream",
         headers={
@@ -228,8 +236,13 @@ async def chat_sync(
     if not session_id:
         session_id = "anonymous"
 
+    # Extract user_id from session_context (required for SteerTrue)
+    user_id = "anonymous"
+    if request.session_context:
+        user_id = request.session_context.get("user_id", "anonymous")
+
     logger.info(
-        f"Sync chat request - session: {session_id}, "
+        f"Sync chat request - session: {session_id}, user: {user_id}, "
         f"message length: {len(request.message)}"
     )
 
@@ -247,7 +260,8 @@ async def chat_sync(
         # Get governance from SteerTrue
         system_prompt, blocks_injected = await steertrue_client.analyze(
             message=request.message,
-            session_id=session_id
+            session_id=session_id,
+            user_id=user_id
         )
 
         # Call Pydantic AI agent with retry logic
