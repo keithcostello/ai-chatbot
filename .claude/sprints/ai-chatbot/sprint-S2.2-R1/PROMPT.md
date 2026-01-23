@@ -269,39 +269,34 @@ chat_agent = Agent(LLM_MODEL, ...)  # NOT hardcoded
 | FastAPI integration | CopilotKit add_fastapi_endpoint docs |
 | Railway config | Railway Python deployment docs |
 
-#### CODE PATTERN (from official docs + vendor-agnostic)
+#### CODE PATTERN (CORRECTED - from official with-pydantic-ai template)
+
+**WARNING:** The pattern below was corrected during S2.2-R1 troubleshooting.
+- CopilotKitSDK wrapper is for LangGraph, NOT Pydantic AI
+- Pydantic AI uses native AG-UI protocol via `agent.to_ag_ui()`
+- See TROUBLESHOOTING_LOG.md for full context (L16-L17)
+
 ```python
-# Must match: https://docs.copilotkit.ai/pydantic-ai/
-# PLUS: Vendor-agnostic LLM configuration
+# CORRECT PATTERN: Native Pydantic AI AG-UI
+# Source: https://github.com/CopilotKit/with-pydantic-ai
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_ai import Agent
-from copilotkit.integrations.fastapi import add_fastapi_endpoint
-from copilotkit import CopilotKitSDK, LangGraphAgent
 
 # VENDOR-AGNOSTIC: Model configurable via environment
 LLM_MODEL = os.getenv("LLM_MODEL", "anthropic:claude-sonnet-4-20250514")
 
+# Create Pydantic AI agent
 chat_agent = Agent(
     LLM_MODEL,  # <-- NOT hardcoded
     system_prompt="You are a helpful assistant.",
 )
 
-sdk = CopilotKitSDK(
-    agents=[
-        LangGraphAgent(
-            name="chat_agent",
-            description="Chat agent",
-            agent=chat_agent.to_ag_ui(),
-        )
-    ],
-)
-
-app = FastAPI()
+# FastAPI application
+app = FastAPI(title="SteerTrue Chat Agent", version="0.1.0")
 
 # CORS configuration (required for frontend communication)
-# Source: https://docs.copilotkit.ai/pydantic-ai/
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
@@ -310,11 +305,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-add_fastapi_endpoint(app, sdk, "/copilotkit")
+# Mount AG-UI app directly (NO CopilotKitSDK wrapper needed)
+ag_ui_app = chat_agent.to_ag_ui()
+app.mount("/copilotkit", ag_ui_app)
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "model": LLM_MODEL}
+    return {"status": "healthy", "model": LLM_MODEL, "version": "0.1.0"}
+```
+
+**DO NOT USE (WRONG - causes ImportError):**
+```python
+# WRONG: CopilotKitSDK is for LangGraph, not Pydantic AI
+from copilotkit import CopilotKitSDK, LangGraphAgent  # <-- WRONG IMPORTS
+sdk = CopilotKitSDK(agents=[LangGraphAgent(...)])     # <-- WRONG PATTERN
 ```
 
 #### LAYER 1 GATE (Standalone Python Agent)
