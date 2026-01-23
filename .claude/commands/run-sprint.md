@@ -27,6 +27,7 @@ argument-hint: "<sprint-name> <sprint-goal>"
 | V3.1 | 2025-12-22 | **ZERO TOLERANCE**: Mandatory tool use for evidence. No fabricated timestamps, no summarized output. All evidence must come from actual Bash/Read tool calls. |
 | V4.0 | 2026-01-05 | **SIMPLIFICATION**: Removed verification theatre (Truth Auditor, nonce system, relay audits). Kept: 7-phase structure, PM/DEV separation, human gates, proof requirements. |
 | V4.1 | 2026-01-15 | **FUNCTIONAL UAT MANDATORY**: Human UAT must test DEPLOYED feature via API, not just pytest. Unit tests are Phase 4. Human UAT is functional testing of the actual feature. |
+| V4.2 | 2026-01-23 | **RAILWAY LOG CHECK PROTOCOL**: PM MUST check Railway logs for errors BEFORE reviewing any DEV checkpoint. Errors found = bug report + fix within sprint. |
 
 You are orchestrating a sprint between pm-agent and dev-executor subagents.
 
@@ -232,6 +233,115 @@ A fix that makes tests pass but doesn't validate the sprint deliverable is a **f
 1. When routing fix proposals, ensure FIX_REVIEW process is followed
 2. Do NOT allow DEV to implement fixes without PM alignment approval
 3. Track fix reviews in state.md
+
+---
+
+## RAILWAY LOG CHECK PROTOCOL (V4.2)
+
+**CRITICAL:** When PM receives ANY checkpoint from DEV involving Railway deployment, PM MUST check Railway logs FIRST before reviewing the checkpoint.
+
+### When This Applies
+
+| Checkpoint Type | Railway Check Required |
+|-----------------|----------------------|
+| Checkpoint-3 (Execution) with deployment | YES |
+| Checkpoint-4 (Testing) with deployed tests | YES |
+| Checkpoint-5 (UAT) | ALWAYS YES |
+| Code review responses | If deployment mentioned |
+| FIX_REVIEW implementations | If fix involved deployment |
+
+### PM Railway Check Protocol
+
+**BEFORE reviewing any DEV checkpoint involving Railway:**
+
+```bash
+# 1. Check Railway logs for errors (last 100 lines)
+railway logs --tail 100
+
+# 2. Look for these error patterns:
+# - "ERROR", "error:", "Error:"
+# - "FATAL", "fatal:"
+# - "Exception", "Traceback"
+# - "500", "502", "503", "504"
+# - "failed", "Failed", "FAILED"
+# - "crash", "Crash", "CRASH"
+# - "timeout", "Timeout"
+
+# 3. If Railway CLI not available, use curl:
+curl -s "https://[deployment-url]/api/v1/health" | jq '.'
+```
+
+### If Error Found in Logs
+
+**PM MUST create bug report and block checkpoint approval:**
+
+1. **Create Bug Report** in `{sprint_path}/escalations/railway-bug-[timestamp].md`:
+
+```markdown
+# Railway Bug Report
+
+**Sprint:** [sprint-id]
+**Discovered:** [timestamp]
+**Phase:** [current phase]
+**Discovered By:** PM during Railway log check
+
+## Error Details
+```
+[Paste actual error lines from railway logs]
+```
+
+## Impact
+- [What is broken]
+- [What users would see]
+
+## Required Action
+DEV must fix this bug WITHIN this sprint before checkpoint can be approved.
+
+## Sprint Scope Decision
+[ ] Bug is in-scope (directly related to sprint goal) - FIX REQUIRED
+[ ] Bug is out-of-scope but blocking - FIX REQUIRED, note for future
+[ ] Bug is out-of-scope and non-blocking - Log for future sprint
+```
+
+2. **REJECT the checkpoint** with Railway log evidence:
+   ```
+   CHECKPOINT REJECTED - Railway log errors detected
+
+   See: escalations/railway-bug-[timestamp].md
+
+   DEV must fix Railway errors before resubmitting.
+   ```
+
+3. **Track in state.md:**
+   ```markdown
+   ## Railway Bugs
+   | Bug ID | Error | Status | Fixed In |
+   |--------|-------|--------|----------|
+   | [id] | [summary] | OPEN/FIXED | [checkpoint] |
+   ```
+
+### PM Review Order (MANDATORY)
+
+For ANY checkpoint involving Railway:
+
+```
+1. railway logs --tail 100    ← FIRST (check for errors)
+2. If errors → Create bug report → REJECT
+3. If clean → Proceed with normal checkpoint review
+```
+
+### Violations
+
+| Violation | Consequence |
+|-----------|-------------|
+| PM approves checkpoint without checking Railway logs | PROCESS VIOLATION |
+| Railway error found but not reported | Sprint grade cap C |
+| Bug report created but not fixed in sprint | Sprint BLOCKED |
+| DEV proceeds without fixing Railway bug | Checkpoint REJECTED |
+
+### Why This Matters
+
+Railway errors are often invisible to DEV who tested locally or didn't check logs. PM is the safety net. Errors in production = user-facing bugs = must be fixed before sprint completion.
 
 ---
 
@@ -1103,6 +1213,13 @@ PHASE 3 - REVIEW CHECKPOINT ALIGNMENT
 Read: {sprint_path}/checkpoints/checkpoint-3.md
 Read: {sprint_path}/checkpoints/code-review-3.md
 
+## RAILWAY LOG CHECK (MANDATORY - V4.2)
+If this checkpoint involves Railway deployment:
+1. Run: railway logs --tail 100
+2. Search for: ERROR, FATAL, Exception, 500/502/503/504, failed, crash, timeout
+3. If errors found → Create bug report in escalations/railway-bug-[timestamp].md → REJECT
+4. Only proceed with review if Railway logs are clean
+
 Code quality: APPROVED (verified by code-reviewer)
 
 PM BOUNDARIES:
@@ -1273,6 +1390,13 @@ PHASE 4 - TEST REVIEW
 
 Read: {sprint_path}/checkpoints/checkpoint-4.md
 Test Verifier returned: PASS
+
+## RAILWAY LOG CHECK (MANDATORY - V4.2)
+Before approving test results:
+1. Run: railway logs --tail 100
+2. Search for: ERROR, FATAL, Exception, 500/502/503/504, failed, crash, timeout
+3. If errors found → Create bug report in escalations/railway-bug-[timestamp].md → REJECT
+4. Only approve if Railway logs are clean AND tests are meaningful
 
 Verify tests are meaningful and complete.
 Return APPROVED or REJECTED.
@@ -1503,7 +1627,16 @@ DEV has submitted:
 
 YOU ARE A FIERCE EXECUTOR - NOT A BOX CHECKER.
 
-REQUIRED ACTIONS:
+## RAILWAY LOG CHECK (MANDATORY - V4.2) - DO THIS FIRST
+1. Run: railway logs --tail 100
+2. Search for: ERROR, FATAL, Exception, 500/502/503/504, failed, crash, timeout
+3. If errors found:
+   - Create bug report in escalations/railway-bug-[timestamp].md
+   - REJECT immediately - do not proceed with test plan validation
+   - DEV must fix Railway errors before UAT can proceed
+4. Only proceed with test plan validation if Railway logs are clean
+
+REQUIRED ACTIONS (after Railway check passes):
 1. Read human-uat-test-plan.md
 2. EXECUTE EVERY COMMAND in the test plan
 3. Verify each command works and produces expected output
