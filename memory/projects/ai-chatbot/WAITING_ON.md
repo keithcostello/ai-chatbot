@@ -1,78 +1,49 @@
 # WAITING_ON - ai-chatbot Project
 
-**Last Updated:** 2026-01-23
-**Sprint:** S2.2-R1 (Phase 2 FAILED - Restarting with Micro-Phase Protocol)
-
----
-
-## Current Blocker
-
-| # | Blocker | Status | Action |
-|---|---------|--------|--------|
-| 1 | Phase 2 failed twice | BLOCKED | Restart with MICRO_PHASE_PROTOCOL.md |
-
----
-
-## What Happened (2026-01-23)
-
-**Phase 2 (Frontend Connection) failed with 3 bugs:**
-
-| Bug | Error | Root Cause |
-|-----|-------|------------|
-| BUG-001 | 422 Upstream | DEV used raw fetch instead of CopilotRuntime |
-| BUG-002 | 405 at "/" | DEV pointed HttpAgent to wrong path |
-| BUG-003 | 405 at localhost:8080 | CopilotKit routing misconfiguration |
-
-**Root Cause Analysis:**
-- DEV not reading requirements fully
-- DEV not testing before claiming complete
-- PM approving without integration verification
-- No micro-phase breakdown with user approval gates
-
----
-
-## New Protocol Created
-
-**File:** `.claude/docs/MICRO_PHASE_PROTOCOL.md`
-
-**Key Rules:**
-- Rule 0: Full document reading with proof (certificates required)
-- Rule 0.3: DEV only sees micro-phase details (not full project)
-- Rule 0.5: Phase entry STOP for micro-phase development with user
-- Rule 1: Proof of reading with citations
-- Rule 2: Micro-phase structure (atomic tasks)
-- Rule 3: Expert review (pydantic_architect.md, copilot_kit.md)
-- Rule 4: agent-browser verification for ALL AI (no exceptions)
-- Rule 5: Work logs with actual output (not summaries)
-- Rule 6: Environment capture at phase end
-- Rule 7: Troubleshooting protocol (10 iteration max)
-- Rule 8: Non-gameable testing (nonce, timestamps, independent verify)
+**Last Updated:** 2026-01-23T21:15:00Z
+**Sprint:** S2.2-R1
+**Position:** Phase 2 Micro-Phase Development - APPROVED, Ready to Execute
 
 ---
 
 ## Current State
 
-**Branch:** dev-sprint-S2.2-R1
-**Commit:** a8e6b65
-**Position:** Phase 2 entry - STOPPED for micro-phase development
+**Phase 2 micro-phases APPROVED by user. Ready to execute Micro 2.1.**
 
-**Completed Phases:**
-- Phase 0: Architect Consultation - DONE
-- Phase 1: Python Agent Setup - DONE (deployed, healthy)
+### Root Cause Identified
 
-**Failed Phase:**
-- Phase 2: Frontend Connection - FAILED (3 bugs, restarting)
+BUG-003 (`localhost:8080` error) is caused by:
+- Railway proxy sends requests with internal `host: localhost:8080`
+- CopilotKit uses `host` header for callback URLs
+- `x-forwarded-host` header exists but CopilotKit doesn't read it
+- Fix: Middleware to rewrite host header from x-forwarded-host
 
----
+### Approved Micro-Phases
 
-## To Resume
+| Micro | Task | Time |
+|-------|------|------|
+| 2.1 | Add host header middleware | 10 min |
+| 2.2 | Build locally | 5 min |
+| 2.3 | Commit and push | 5 min |
+| 2.4 | Wait for deploy | 5 min |
+| 2.5 | Integration test with agent-browser | 10 min |
 
-1. User and Orchestrator develop micro-phases for Phase 2
-2. Each micro-phase gets expert review
-3. User approves each micro-phase before execution
-4. DEV receives ONLY micro-phase spec (not full project)
-5. All verification uses agent-browser
-6. All outputs approved by user
+### Micro 2.1 Exact Code
+
+Add to middleware.ts BEFORE auth handling:
+
+```typescript
+if (pathname.startsWith('/api/copilotkit')) {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  if (forwardedHost) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('host', forwardedHost);
+    return NextResponse.next({
+      request: { headers: requestHeaders }
+    });
+  }
+}
+```
 
 ---
 
@@ -82,7 +53,35 @@
 |---------|-----|--------|
 | Frontend | steertrue-chat-dev-sandbox.up.railway.app | Healthy |
 | Python Agent | steertrue-pydantic-ai-dev-sandbox.up.railway.app | Healthy |
+| Python AG-UI | /copilotkit endpoint | Working |
 
-| Variable | Value | Location |
-|----------|-------|----------|
-| PYDANTIC_AI_URL | https://steertrue-pydantic-ai-dev-sandbox.up.railway.app | Railway frontend |
+| Variable | Value |
+|----------|-------|
+| PYDANTIC_AI_URL | https://steertrue-pydantic-ai-dev-sandbox.up.railway.app |
+
+---
+
+## Protocol
+
+All work follows `.claude/docs/MICRO_PHASE_PROTOCOL.md`:
+- DEV only sees micro-phase spec (not full project)
+- Expert review done before micro-phases
+- Each micro-phase requires PROOF to close
+- agent-browser verification mandatory
+
+---
+
+## Files
+
+| File | Status |
+|------|--------|
+| app/api/copilotkit/route.ts | APPROVED by expert - no changes needed |
+| app/chat/page.tsx | APPROVED - no changes needed |
+| middleware.ts | NEEDS UPDATE - add host header fix |
+| .claude/docs/MICRO_PHASE_PROTOCOL.md | Complete |
+
+---
+
+## Branch
+
+**dev-sprint-S2.2-R1** - Commit: 63202d9

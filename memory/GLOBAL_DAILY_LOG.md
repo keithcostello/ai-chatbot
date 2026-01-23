@@ -25,3 +25,27 @@ Cross-project activity tracking.
 
 **Commit:** a8e6b65
 **Branch:** dev-sprint-S2.2-R1
+
+---
+
+### ai-chatbot - Sprint S2.2-R1 (Continued)
+
+**Session:** 6ca7d41e-de22-45 (context compression imminent)
+**Time:** 2026-01-23T21:15:00Z
+
+**Progress:**
+- Created MICRO_PHASE_PROTOCOL.md with strict AI controls
+- Expert review completed: route.ts and page.tsx APPROVED
+- Root cause of BUG-003 identified: Railway proxy host header issue
+- Micro-phases 2.1-2.5 approved by user
+
+**Root Cause (BUG-003):**
+- Railway sends internal `host: localhost:8080`
+- CopilotKit uses host header for callbacks
+- x-forwarded-host exists but not used
+- Fix: Middleware to rewrite host from x-forwarded-host
+
+**Next Action:** Execute Micro 2.1 - Add host header middleware
+
+**Commit:** 63202d9
+**Branch:** dev-sprint-S2.2-R1
