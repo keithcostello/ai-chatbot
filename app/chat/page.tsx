@@ -7,6 +7,8 @@
  * Source: https://github.com/CopilotKit/with-pydantic-ai
  *
  * Route: /chat
+ *
+ * Environment: NEXT_PUBLIC_COPILOT_RUNTIME_URL must be set with https:// prefix
  */
 
 import { CopilotKit } from "@copilotkit/react-core";
