@@ -29,9 +29,12 @@ async function callSteerTrue(
   message: string,
   sessionId: string
 ): Promise<{ systemPrompt: string; blocksInjected: string[] }> {
+  console.log('[SteerTrue] callSteerTrue called with sessionId:', sessionId);
+  console.log('[SteerTrue] STEERTRUE_API_URL:', STEERTRUE_API_URL || 'NOT SET');
+
   // If no SteerTrue URL configured, use fallback
   if (!STEERTRUE_API_URL) {
-    console.warn('STEERTRUE_API_URL not configured, using fallback');
+    console.warn('[SteerTrue] STEERTRUE_API_URL not configured, using fallback');
     return {
       systemPrompt: FALLBACK_SYSTEM_PROMPT,
       blocksInjected: ['FALLBACK/not_configured'],
@@ -42,6 +45,7 @@ async function callSteerTrue(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), STEERTRUE_TIMEOUT_MS);
 
+    console.log('[SteerTrue] Calling:', `${STEERTRUE_API_URL}/api/v1/analyze`);
     const response = await fetch(`${STEERTRUE_API_URL}/api/v1/analyze`, {
       method: 'POST',
       headers: {
@@ -50,6 +54,7 @@ async function callSteerTrue(
       body: JSON.stringify({
         message: message,
         session_id: sessionId,
+        user_id: sessionId,
       }),
       signal: controller.signal,
     });
@@ -66,16 +71,18 @@ async function callSteerTrue(
     }
 
     const data: SteerTrueResponse = await response.json();
+    console.log('[SteerTrue] Response received, blocks_injected:', data.blocks_injected);
 
     // Validate response has required fields
     if (!data.system_prompt || !Array.isArray(data.blocks_injected)) {
-      console.error('SteerTrue response missing required fields');
+      console.error('[SteerTrue] Response missing required fields:', JSON.stringify(data));
       return {
         systemPrompt: FALLBACK_SYSTEM_PROMPT,
         blocksInjected: ['FALLBACK/invalid_response'],
       };
     }
 
+    console.log('[SteerTrue] SUCCESS - returning', data.blocks_injected.length, 'blocks');
     return {
       systemPrompt: data.system_prompt,
       blocksInjected: data.blocks_injected,
