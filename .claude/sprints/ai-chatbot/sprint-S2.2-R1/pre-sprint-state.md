@@ -254,6 +254,65 @@ Step 1.25 missed standard AI chat features (file upload, image upload, copy, pas
 
 ---
 
+## Railway Infrastructure (From S2.2)
+
+**Captured:** 2026-01-23
+**Source:** S2.2 dev-sandbox environment
+
+### Project Configuration
+
+| Setting | Value |
+|---------|-------|
+| Project Name | upbeat-benevolence |
+| Project ID | 7e819fb2-6401-4390-be5f-d66ede223933 |
+| Environment | dev-sandbox |
+| Environment ID | 1c0da47b-9400-42d2-9a53-7d063c255e4b |
+
+### Services
+
+| Service | URL |
+|---------|-----|
+| steertrue-chat-frontend | steertrue-chat-dev-sandbox.up.railway.app |
+| steertrue-pydantic-ai | steertrue-pydantic-ai-dev-sandbox.up.railway.app |
+| steertrue-sandbox (backend) | steertrue-sandbox-dev-sandbox.up.railway.app |
+
+### Environment Variables (Frontend Service)
+
+| Variable | Purpose | Set |
+|----------|---------|-----|
+| AUTH_SECRET | Auth.js session encryption | ✓ |
+| AUTH_URL | Auth callback URL | ✓ |
+| AUTH_TRUST_HOST | Railway proxy trust | ✓ |
+| AUTH_GOOGLE_ID | Google OAuth client | ✓ |
+| AUTH_GOOGLE_SECRET | Google OAuth secret | ✓ |
+| DATABASE_URL | Postgres internal URL | ✓ |
+| DATABASE_PUBLIC_URL | Postgres external URL | ✓ |
+| NEXTAUTH_URL | Legacy Auth.js URL | ✓ |
+| ANTHROPIC_API_KEY | Claude API access | ✓ |
+| OPENAI_API_KEY | OpenAI API access | ✓ |
+| PYDANTIC_AI_URL | Python agent endpoint | ✓ |
+| STEERTRUE_API_URL | Governance API endpoint | ✓ |
+| GITHUB_TOKEN | GitHub API access | ✓ |
+
+### Database
+
+| Setting | Value |
+|---------|-------|
+| Type | Railway Postgres |
+| Internal Host | postgres-x1a.railway.internal:5432 |
+| External Proxy | tramway.proxy.rlwy.net:16067 |
+| Database Name | railway |
+
+### S2.2-R1 Additional Variables Needed
+
+| Variable | Purpose | Status |
+|----------|---------|--------|
+| LLM_MODEL | Vendor-agnostic model config | NEW - Add during Phase 1 |
+| ALLOWED_ORIGINS | CORS for Python agent | NEW - Add during Phase 1 |
+| NEXT_PUBLIC_COPILOT_RUNTIME_URL | Frontend → Python agent | NEW - Add during Phase 2 |
+
+---
+
 ## Validation Notes
 
 (To be filled during pre-sprint validation)
