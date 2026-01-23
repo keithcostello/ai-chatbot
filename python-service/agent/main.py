@@ -15,7 +15,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_ai import Agent
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
-from copilotkit import CopilotKitSDK, LangGraphAgent
+from copilotkit import CopilotKitSDK
+from copilotkit.langgraph import LangGraphAGUIAgent
 
 # 1. Vendor-agnostic model configuration
 # Source: CONTEXT.md Section 2 - Binding Decisions
@@ -32,7 +33,7 @@ chat_agent = Agent(
 # Source: https://docs.copilotkit.ai/pydantic-ai/
 sdk = CopilotKitSDK(
     agents=[
-        LangGraphAgent(
+        LangGraphAGUIAgent(
             name="chat_agent",
             description="SteerTrue-governed chat agent",
             agent=chat_agent.to_ag_ui(),
