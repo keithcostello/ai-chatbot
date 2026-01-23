@@ -1,0 +1,27 @@
+# SteerTrue Pydantic AI Microservice Dependencies
+#
+# Reference: https://ai.pydantic.dev/ - Pydantic AI package
+# Reference: https://fastapi.tiangolo.com/ - FastAPI framework
+
+# Core framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Pydantic AI for structured LLM outputs
+# Reference: https://ai.pydantic.dev/
+pydantic-ai>=0.0.24
+
+# Anthropic SDK (used by pydantic-ai for Claude)
+anthropic>=0.39.0
+
+# Pydantic V2 for data validation
+pydantic>=2.0.0
+
+# HTTP client with async support
+httpx>=0.26.0
+
+# SSE support for streaming
+sse-starlette>=1.8.0
+
+# Environment variable management
+python-dotenv>=1.0.0
