@@ -210,8 +210,10 @@ export class SteerTrueAgent extends AbstractAgent {
 
   /**
    * Async handler for the run method
+   * NOTE: Using arrow function to preserve `this` binding when called asynchronously
+   * BUG-011 FIX: this.sessionId was undefined because `this` context was lost
    */
-  private async handleRun(input: RunAgentInput, subject: Subject<BaseEvent>): Promise<void> {
+  private handleRun = async (input: RunAgentInput, subject: Subject<BaseEvent>): Promise<void> => {
     const messageId = generateMessageId();
     const runIdToUse = input?.runId || generateMessageId();
 
@@ -249,6 +251,9 @@ export class SteerTrueAgent extends AbstractAgent {
     console.log('[SteerTrueAgent] Latest user message:', latestUserMessage?.substring(0, 100) + '...');
 
     try {
+      // BUG-011 DEBUG: Log this.sessionId to verify binding
+      console.log('[SteerTrueAgent] About to call SteerTrue with this.sessionId:', this.sessionId);
+
       // Call SteerTrue to get governance-injected system prompt
       const { systemPrompt, blocksInjected } = await callSteerTrue(
         latestUserMessage || 'Hello',  // Fallback to prevent empty message
