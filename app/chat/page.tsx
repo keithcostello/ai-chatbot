@@ -16,38 +16,12 @@ import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 
 export default function ChatPage() {
-  // Get runtime URL from env and normalize
-  let runtimeUrl = process.env.NEXT_PUBLIC_COPILOT_RUNTIME_URL;
-
-  if (runtimeUrl) {
-    // Force HTTPS to prevent mixed content errors
-    if (runtimeUrl.startsWith("http://")) {
-      runtimeUrl = runtimeUrl.replace("http://", "https://");
-    }
-    // Ensure trailing slash to prevent 307 redirect (which uses HTTP)
-    if (!runtimeUrl.endsWith("/")) {
-      runtimeUrl = runtimeUrl + "/";
-    }
-  }
+  // Use local proxy to avoid mixed content issues with external agent
+  // The proxy at /api/copilotkit forwards to PYDANTIC_AI_URL server-side
+  const runtimeUrl = "/api/copilotkit";
 
   // Debug: Log runtime URL
   console.log("CopilotKit runtimeUrl:", runtimeUrl);
-
-  if (!runtimeUrl) {
-    return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        fontFamily: "system-ui, sans-serif",
-      }}>
-        <p style={{ color: "#dc3545" }}>
-          Error: NEXT_PUBLIC_COPILOT_RUNTIME_URL is not configured
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
