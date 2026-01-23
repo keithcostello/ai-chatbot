@@ -1,10 +1,7 @@
 /**
- * CopilotKit Proxy Route
+ * CopilotKit Proxy Route - Main Endpoint
  *
- * Proxies requests to the Python agent to:
- * 1. Avoid mixed content issues (browser sees only HTTPS)
- * 2. Handle CORS internally
- * 3. Preserve SSE streaming
+ * Proxies POST requests to the Python agent AG-UI endpoint
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,6 +12,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
 
+    console.log("[CopilotKit Proxy] POST to:", `${PYTHON_AGENT_URL}/copilotkit/`);
+
     const response = await fetch(`${PYTHON_AGENT_URL}/copilotkit/`, {
       method: "POST",
       headers: {
@@ -23,6 +22,15 @@ export async function POST(request: NextRequest) {
       },
       body,
     });
+
+    // Check for error status
+    if (!response.ok) {
+      console.error("[CopilotKit Proxy] Error:", response.status, response.statusText);
+      return NextResponse.json(
+        { error: `Upstream error: ${response.status}` },
+        { status: response.status }
+      );
+    }
 
     // Stream the response
     if (response.body) {
@@ -41,32 +49,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } catch (error) {
-    console.error("CopilotKit proxy error:", error);
+    console.error("[CopilotKit Proxy] Exception:", error);
     return NextResponse.json(
       { error: "Proxy request failed" },
       { status: 500 }
     );
   }
-}
-
-export async function GET(request: NextRequest) {
-  // Handle info endpoint
-  const url = new URL(request.url);
-  if (url.pathname.endsWith("/info")) {
-    try {
-      const response = await fetch(`${PYTHON_AGENT_URL}/copilotkit/info`);
-      const data = await response.json();
-      return NextResponse.json(data);
-    } catch (error) {
-      return NextResponse.json(
-        { error: "Info endpoint not available" },
-        { status: 404 }
-      );
-    }
-  }
-
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405 }
-  );
 }
