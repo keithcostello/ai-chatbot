@@ -7,8 +7,8 @@ HOW: Read KEY LESSONS and ANTI-PATTERNS before starting work. Reference REQUIRED
 # LESSONS LEARNED - ai-chatbot Sprints
 
 **Created:** 2026-01-21
-**Last Updated:** 2026-01-22
-**Sprints Covered:** S2.1, S2.2
+**Last Updated:** 2026-01-23
+**Sprints Covered:** S2.1, S2.2 (FAILED)
 
 ---
 
@@ -560,6 +560,135 @@ This ensures governance blocks fire for approval-related tasks.
 **Reality:** If L2/proof_enforcement doesn't fire for DEV/PM approval tasks, those agents operate UNGOVERNED. This is a system failure, not acceptable behavior.
 
 **Rule:** Governance must be unconditional. No exceptions.
+
+---
+
+### L14: Use Official Framework Patterns, Not Custom Implementations
+
+**Lesson:** When a framework provides an official integration pattern, USE IT. Custom implementations fight the framework.
+
+**Example from S2.2 (SPRINT FAILED):**
+- CONTEXT.md specified Phase 3B: "Python FastAPI + Pydantic AI"
+- Phase 3B was SKIPPED
+- Instead: Custom TypeScript `SteerTrueAgent` extending CopilotKit's AbstractAgent
+- Result: 6 bugs (BUG-009 to BUG-015) from fighting CopilotKit internals
+
+**What was built (wrong):**
+```
+Next.js → Custom SteerTrueAgent → Manual RxJS events → Anthropic SDK
+              (Fighting CopilotKit internals)
+```
+
+**What should have been built (official pattern):**
+```
+Next.js (CopilotKit) → Python Agent (Pydantic AI + AG-UI protocol)
+                              ↓
+                       agent.to_ag_ui()  ← Built-in event handling
+```
+
+**Evidence of fighting the framework:**
+| Bug | Root Cause |
+|-----|------------|
+| BUG-009 | CopilotKit bypasses adapter |
+| BUG-010 | Missing serviceAdapter |
+| BUG-011 | `this` context lost |
+| BUG-012 | Agent clone loses properties |
+| BUG-013 | RUN_STARTED event lost (RxJS) |
+| BUG-015 | Conversation creation failing |
+
+**Rule:** Before implementing ANY framework integration:
+1. Read official documentation for the integration pattern
+2. Check if an official example repo exists (e.g., `CopilotKit/with-pydantic-ai`)
+3. Follow the official pattern EXACTLY
+4. If the framework provides a protocol (e.g., AG-UI), use it
+5. Do NOT build custom implementations that bypass framework internals
+
+**Reference:** https://docs.copilotkit.ai/pydantic-ai
+
+---
+
+### L15: Phase Skipping Is Sprint Failure
+
+**Lesson:** Skipping a planned phase invalidates the sprint architecture.
+
+**Example from S2.2:**
+- CONTEXT.md defined Phase 3B: "Python FastAPI + Pydantic AI → Structured output"
+- Phase 3B was skipped, jumping from 3A to Phase 4
+- "Fallback" clause misinterpreted as permission to skip entirely
+- Architecture became misaligned with framework expectations
+
+**The "Fallback" trap:**
+```
+**Fallback:** If Python integration fails, skeleton remains functional.
+```
+This means "try 3B, fall back if it fails." NOT "skip 3B entirely."
+
+**Rule:**
+- Every phase in CONTEXT.md must be executed or explicitly marked SKIPPED with documented reason
+- "Fallback" clauses require attempting the primary path first
+- Phase skip requires PM approval with documented justification
+- If a phase is critical to architecture (like 3B), skipping = sprint failure
+
+---
+
+### AP7: "Build Custom Instead of Use Official"
+
+**Pattern:** Framework has official integration pattern. DEV builds custom implementation instead.
+
+**Reality:** Custom implementations:
+- Fight framework internals
+- Break when framework updates
+- Miss built-in features (error handling, events, state sync)
+- Create maintenance burden
+
+**Example from S2.2:**
+- CopilotKit + Pydantic AI has official pattern with AG-UI protocol
+- DEV built custom TypeScript agent with manual RxJS event handling
+- 6 bugs resulted from fighting CopilotKit's internal architecture
+
+**Correction:** ALWAYS check for official integration patterns first:
+1. Framework docs (e.g., docs.copilotkit.ai)
+2. Official example repos (e.g., github.com/CopilotKit/with-pydantic-ai)
+3. Community templates blessed by framework authors
+
+If official pattern exists, use it. Period.
+
+---
+
+### PG9: No Architecture Review Against Official Docs
+
+**Gap:** Sprint architecture was designed without checking CopilotKit's official Pydantic AI integration docs.
+
+**Fix:** Before any sprint involving framework integrations:
+```markdown
+## ARCHITECTURE REVIEW (MANDATORY)
+1. Framework official docs reviewed: [URLs]
+2. Official integration pattern exists: [YES/NO]
+3. Official example repo exists: [YES/NO]
+4. Sprint architecture matches official pattern: [YES/NO with diff]
+```
+
+If sprint architecture differs from official pattern, MUST document why with PM approval.
+
+---
+
+## SPRINT S2.2 FAILURE SUMMARY
+
+**Sprint Status:** FAILED (2026-01-23)
+
+**Root Cause:** Architecture misalignment - Phase 3B (Python + Pydantic AI) skipped
+
+**Symptom:** 6 bugs from fighting CopilotKit internals
+
+**Decision:** Redesign sprint using official CopilotKit + Pydantic AI pattern
+
+**What Must Change:**
+1. Remove custom TypeScript `SteerTrueAgent`
+2. Implement Python agent with `agent.to_ag_ui()`
+3. Use `useCoAgent` hook on frontend
+4. SteerTrue injects into Python agent's system prompt
+
+**Reference:** https://docs.copilotkit.ai/pydantic-ai
 
 ---
 

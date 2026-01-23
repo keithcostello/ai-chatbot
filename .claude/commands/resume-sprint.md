@@ -13,6 +13,7 @@ argument-hint: "<sprint-id> <type>: <response>"
 | V1.2 | 2025-12-06 | YAML output templates |
 | V2.0 | 2025-12-17 | Agent resume types, position-based resume |
 | V3.0 | 2026-01-05 | **SIMPLIFICATION**: Removed verification theatre (Truth Auditor, nonce, relay audits). Kept: human gates, position resume, FIX_REVIEW. |
+| V3.1 | 2026-01-23 | **RAILWAY LOG CHECK**: PM must check Railway logs when reviewing DEV fix implementations after UAT failure. |
 
 Resume a sprint that was paused for any reason requiring human input.
 
@@ -107,6 +108,10 @@ Resume a sprint that was paused for any reason requiring human input.
 
 5. DEV must submit FIX_REVIEW proposal
 6. Continue with FIX_REVIEW protocol
+7. **RAILWAY LOG CHECK (V3.1):** When PM reviews DEV's fix implementation:
+   - Run `railway logs --tail 100` FIRST
+   - If errors found → Create bug report → REJECT fix
+   - Only approve fix if Railway logs are clean
 
 ### From MERGE_PENDING
 
