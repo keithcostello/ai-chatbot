@@ -25,7 +25,7 @@ export default function ChatPage() {
 
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
-      <CopilotKit runtimeUrl={runtimeUrl}>
+      <CopilotKit runtimeUrl={runtimeUrl} agent="steertrue_agent">
         <CopilotChat
           labels={{
             title: "SteerTrue Chat",
