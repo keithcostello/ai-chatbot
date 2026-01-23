@@ -322,15 +322,24 @@ export default function ChatPage() {
       const response = await fetch('/api/conversations');
       if (response.ok) {
         const data = await response.json();
-        setConversations(data.conversations || []);
-        console.log('[ChatPage] Loaded', data.conversations?.length || 0, 'conversations');
+        const loadedConversations = data.conversations || [];
+        setConversations(loadedConversations);
+        console.log('[ChatPage] Loaded', loadedConversations.length, 'conversations');
+
+        // BUG-014 Fix: Auto-select most recent conversation on page load
+        // Conversations are sorted by updatedAt DESC from API, so [0] is most recent
+        if (loadedConversations.length > 0 && !currentConversationId) {
+          const mostRecent = loadedConversations[0];
+          console.log('[ChatPage] Auto-selecting most recent conversation:', mostRecent.id);
+          setCurrentConversationId(mostRecent.id);
+        }
       }
     } catch (error) {
       console.error('[ChatPage] Failed to load conversations:', error);
     } finally {
       setIsLoadingConversations(false);
     }
-  }, []);
+  }, [currentConversationId]);
 
   // Create new conversation
   const handleNewChat = useCallback(async () => {
