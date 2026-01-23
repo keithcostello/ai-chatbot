@@ -87,28 +87,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, account }) {
       // For Google OAuth, ensure user exists in our database
       if (account?.provider === 'google') {
-        const existingUser = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, user.email!))
-          .limit(1);
+        try {
+          const existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, user.email!))
+            .limit(1);
 
-        if (existingUser.length === 0) {
-          // Create new user
-          const [newUser] = await db
-            .insert(users)
-            .values({
-              email: user.email!,
-              displayName: user.name,
-              // passwordHash defaults to '' for OAuth users (per schema)
-            })
-            .returning({ id: users.id });
+          if (existingUser.length === 0) {
+            console.log(`[Auth] Creating new Google user: ${user.email}`);
+            const [newUser] = await db
+              .insert(users)
+              .values({
+                email: user.email!,
+                displayName: user.name,
+                // passwordHash defaults to '' for OAuth users (per schema)
+              })
+              .returning({ id: users.id });
 
-          // Set user.id to database UUID
-          user.id = newUser.id;
-        } else {
-          // Use existing user's database ID
-          user.id = existingUser[0].id;
+            user.id = newUser.id;
+            console.log(`[Auth] Google user created: ${newUser.id}`);
+          } else {
+            user.id = existingUser[0].id;
+            console.log(`[Auth] Existing Google user found: ${existingUser[0].id}`);
+          }
+        } catch (error) {
+          console.error(`[Auth] Failed to create/find Google user: ${user.email}`, error);
+          return false; // Prevent login with broken state
         }
       }
       return true;
