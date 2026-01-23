@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@copilotkit/react-core": "^1.51.2",
+    "@copilotkit/react-ui": "^1.51.2",
+    "@copilotkit/runtime": "^1.51.2",
     "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.1",
     "jose": "^6.1.3",
