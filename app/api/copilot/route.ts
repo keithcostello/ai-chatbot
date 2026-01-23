@@ -1,19 +1,13 @@
 import {
   CopilotRuntime,
   copilotRuntimeNextJSAppRouterEndpoint,
-  AnthropicAdapter,
 } from "@copilotkit/runtime";
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { createSteerTrueAdapter } from "@/lib/steertrue-adapter";
 
 // Python service URL from environment (optional - for future CoAgents integration)
 const PYDANTIC_AI_URL = process.env.PYDANTIC_AI_URL;
-
-// Create AnthropicAdapter for direct LLM access
-// Uses ANTHROPIC_API_KEY from environment automatically
-const serviceAdapter = new AnthropicAdapter({
-  model: "claude-sonnet-4-20250514",
-});
 
 // Create CopilotRuntime
 // Note: remoteActions would be used for Python/CoAgents integration (future S2.4)
@@ -38,11 +32,20 @@ export const POST = async (req: NextRequest) => {
   }
 
   // Log for debugging
-  console.log("[CopilotKit] Request received, user:", session.user.id);
-  console.log("[CopilotKit] Using AnthropicAdapter with claude-sonnet-4-20250514");
+  const userId = session.user.id || session.user.email || "anonymous";
+  console.log("[CopilotKit] Request received, user:", userId);
+  console.log("[CopilotKit] Using SteerTrueAnthropicAdapter with governance injection");
   if (PYDANTIC_AI_URL) {
     console.log("[CopilotKit] PYDANTIC_AI_URL configured for future CoAgents:", PYDANTIC_AI_URL);
   }
+
+  // Create SteerTrueAnthropicAdapter with user's session ID
+  // This adapter calls SteerTrue /api/v1/analyze before Anthropic to inject governance
+  // FIX for BUG-007: CopilotKit Bypasses SteerTrue Governance
+  const serviceAdapter = createSteerTrueAdapter({
+    model: "claude-sonnet-4-20250514",
+    sessionId: userId,
+  });
 
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
