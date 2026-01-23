@@ -16,7 +16,8 @@ const { auth } = NextAuth(authConfig);
 
 // Routes that don't require authentication
 // Note: /chat added for Phase 2 skeleton testing - will require auth in Phase 6
-const publicRoutes = ['/', '/login', '/signup', '/api/auth', '/api/health', '/chat'];
+// Note: /api/copilotkit added for CopilotKit proxy endpoints
+const publicRoutes = ['/', '/login', '/signup', '/api/auth', '/api/health', '/api/copilotkit', '/chat'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
