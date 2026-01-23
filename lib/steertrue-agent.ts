@@ -209,6 +209,27 @@ export class SteerTrueAgent extends AbstractAgent {
   }
 
   /**
+   * Clone this agent for safe concurrent use.
+   * CRITICAL: CopilotKit clones agents before running them (see handleRunAgent).
+   * Without this override, custom properties (anthropic, model, sessionId) would be lost.
+   */
+  clone(): SteerTrueAgent {
+    const cloned = new SteerTrueAgent({
+      agentId: this.agentId,
+      description: this.description,
+      threadId: this.threadId,
+      initialMessages: [...this.messages],
+      initialState: { ...this.state },
+      debug: this.debug,
+      model: this.model,
+      sessionId: this.sessionId,
+    });
+    // Copy middlewares
+    cloned['middlewares'] = [...this['middlewares']];
+    return cloned;
+  }
+
+  /**
    * Async handler for the run method
    * NOTE: Using arrow function to preserve `this` binding when called asynchronously
    * BUG-011 FIX: this.sessionId was undefined because `this` context was lost
