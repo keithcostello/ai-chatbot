@@ -178,12 +178,28 @@ export class SteerTrueAgent extends AbstractAgent {
   /**
    * Implement the abstract run method from AbstractAgent
    * This is called by CopilotKit to handle chat messages
+   *
+   * FIX for BUG-013: RUN_STARTED must be emitted SYNCHRONOUSLY
+   * The AG-UI verifyEvents validator subscribes to the Observable immediately
+   * and requires the first event to be RUN_STARTED. If we emit it inside
+   * an async function, it happens in a future microtask, too late for the validator.
    */
   run(input: RunAgentInput): Observable<BaseEvent> {
     const subject = new Subject<BaseEvent>();
+    const runIdToUse = input?.runId || generateMessageId();
 
-    // Run async handler
-    this.handleRun(input, subject).catch((error) => {
+    // CRITICAL FIX: Emit RUN_STARTED SYNCHRONOUSLY before returning Observable
+    // This MUST happen before the async handler starts
+    const runStartedEvent: RunStartedEvent = {
+      type: EventType.RUN_STARTED,
+      runId: runIdToUse,
+      threadId: this.threadId,
+      timestamp: Date.now(),
+    };
+    subject.next(runStartedEvent);
+
+    // Now run the async handler for the rest of the processing
+    this.handleRun(input, subject, runIdToUse).catch((error) => {
       console.error('[SteerTrueAgent] Run error:', error);
       subject.error(error);
     });
@@ -233,19 +249,13 @@ export class SteerTrueAgent extends AbstractAgent {
    * Async handler for the run method
    * NOTE: Using arrow function to preserve `this` binding when called asynchronously
    * BUG-011 FIX: this.sessionId was undefined because `this` context was lost
+   * BUG-013 FIX: RUN_STARTED is now emitted synchronously in run(), not here
    */
-  private handleRun = async (input: RunAgentInput, subject: Subject<BaseEvent>): Promise<void> => {
+  private handleRun = async (input: RunAgentInput, subject: Subject<BaseEvent>, runIdToUse: string): Promise<void> => {
     const messageId = generateMessageId();
-    const runIdToUse = input?.runId || generateMessageId();
 
-    // CRITICAL: Emit RUN_STARTED as the FIRST event (AG-UI protocol requirement)
-    const runStartedEvent: RunStartedEvent = {
-      type: EventType.RUN_STARTED,
-      runId: runIdToUse,
-      threadId: this.threadId,
-      timestamp: Date.now(),
-    };
-    subject.next(runStartedEvent);
+    // NOTE: RUN_STARTED was already emitted synchronously in run() method
+    // This fixes BUG-013: "First event must be 'RUN_STARTED'" error
 
     // Defensive check for input and messages
     if (!input || !input.messages) {
