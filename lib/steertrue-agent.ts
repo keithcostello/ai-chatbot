@@ -212,9 +212,33 @@ export class SteerTrueAgent extends AbstractAgent {
    * Async handler for the run method
    */
   private async handleRun(input: RunAgentInput, subject: Subject<BaseEvent>): Promise<void> {
-    const { messages, runId } = input;
     const messageId = generateMessageId();
+    const runIdToUse = input?.runId || generateMessageId();
 
+    // CRITICAL: Emit RUN_STARTED as the FIRST event (AG-UI protocol requirement)
+    const runStartedEvent: RunStartedEvent = {
+      type: EventType.RUN_STARTED,
+      runId: runIdToUse,
+      threadId: this.threadId,
+      timestamp: Date.now(),
+    };
+    subject.next(runStartedEvent);
+
+    // Defensive check for input and messages
+    if (!input || !input.messages) {
+      console.error('[SteerTrueAgent] Invalid input: input or messages is undefined');
+      const errorEvent: RunErrorEvent = {
+        type: EventType.RUN_ERROR,
+        message: 'Invalid input: messages not provided',
+        code: 'INVALID_INPUT',
+        timestamp: Date.now(),
+      };
+      subject.next(errorEvent);
+      subject.complete();
+      return;
+    }
+
+    const { messages, runId } = input;
     console.log('[SteerTrueAgent] handleRun called with', messages.length, 'messages');
 
     // Extract the latest user message
@@ -222,16 +246,7 @@ export class SteerTrueAgent extends AbstractAgent {
     const latestUserContent = userMessages[userMessages.length - 1]?.content;
     const latestUserMessage = this.extractTextContent(latestUserContent);
 
-    console.log('[SteerTrueAgent] Latest user message:', latestUserMessage.substring(0, 100) + '...');
-
-    // Emit run started event
-    const runStartedEvent: RunStartedEvent = {
-      type: EventType.RUN_STARTED,
-      runId: runId || generateMessageId(),
-      threadId: this.threadId,
-      timestamp: Date.now(),
-    };
-    subject.next(runStartedEvent);
+    console.log('[SteerTrueAgent] Latest user message:', latestUserMessage?.substring(0, 100) + '...');
 
     try {
       // Call SteerTrue to get governance-injected system prompt
@@ -296,7 +311,7 @@ export class SteerTrueAgent extends AbstractAgent {
       // Emit run finished event
       const runFinishedEvent: RunFinishedEvent = {
         type: EventType.RUN_FINISHED,
-        runId: runId || messageId,
+        runId: runIdToUse,
         threadId: this.threadId,
         timestamp: Date.now(),
       };
