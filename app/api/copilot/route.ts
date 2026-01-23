@@ -15,6 +15,7 @@
 import {
   CopilotRuntime,
   copilotRuntimeNextJSAppRouterEndpoint,
+  EmptyAdapter,
 } from "@copilotkit/runtime";
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
@@ -67,9 +68,15 @@ export const POST = async (req: NextRequest) => {
       : [],
   });
 
+  // FIX for BUG-010: CopilotKit's getCommonConfig() accesses serviceAdapter.constructor.name
+  // for telemetry without checking if serviceAdapter is defined. This causes:
+  // TypeError: Cannot read properties of undefined (reading 'constructor')
+  // Solution: Provide EmptyAdapter to satisfy telemetry. Our custom agent in `agents.default`
+  // handles actual LLM calls, so EmptyAdapter is never used for processing.
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,
     endpoint: "/api/copilot",
+    serviceAdapter: new EmptyAdapter(),
   });
 
   return handleRequest(req);
