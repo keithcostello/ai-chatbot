@@ -1,64 +1,88 @@
 # WAITING_ON - ai-chatbot Project
 
-**Last Updated:** 2026-01-22
-**Sprint:** S2.2 (READY TO RESUME)
+**Last Updated:** 2026-01-23
+**Sprint:** S2.2-R1 (Phase 2 FAILED - Restarting with Micro-Phase Protocol)
 
 ---
 
-## BLOCKERS - ALL RESOLVED
+## Current Blocker
 
-| # | Blocker | Status | Resolution |
-|---|---------|--------|------------|
-| 1 | Subagent SteerTrue governance | **FIXED** | Session isolation implemented - unique session per subagent |
-| 2 | Revert all work after df23763 | **DONE** | Branch reset to df23763, force pushed |
-| 3 | Bug reports reviewed by PM | **DONE** | BUG_REPORT_001.md committed |
-| 4 | Root cause analysis | **DONE** | LESSONS_LEARNED.md updated |
+| # | Blocker | Status | Action |
+|---|---------|--------|--------|
+| 1 | Phase 2 failed twice | BLOCKED | Restart with MICRO_PHASE_PROTOCOL.md |
 
 ---
 
-## Subagent Governance Testing (2026-01-22) - POST-FIX
+## What Happened (2026-01-23)
 
-**All 6 sprint subagent types verified:**
+**Phase 2 (Frontend Connection) failed with 3 bugs:**
 
-| Agent Type | Blocks | L2/proof_enforcement | Session Isolation | Status |
-|------------|--------|---------------------|-------------------|--------|
-| dev-executor | 5 | YES | UNIQUE | **PASS** |
-| pm-agent | 5 | YES | UNIQUE | **PASS** |
-| code-reviewer | 5 | YES | UNIQUE | **PASS** |
-| design-reviewer | 5 | YES | UNIQUE | **PASS** |
-| human-uat-executor | 5 | YES | UNIQUE | **PASS** |
-| test-verifier | 6 | YES | UNIQUE | **PASS** |
+| Bug | Error | Root Cause |
+|-----|-------|------------|
+| BUG-001 | 422 Upstream | DEV used raw fetch instead of CopilotRuntime |
+| BUG-002 | 405 at "/" | DEV pointed HttpAgent to wrong path |
+| BUG-003 | 405 at localhost:8080 | CopilotKit routing misconfiguration |
 
-**Session IDs verified unique:**
-- Parent: 2928c10c-9a4d-47
-- Subagents each received unique session IDs (not extending parent)
+**Root Cause Analysis:**
+- DEV not reading requirements fully
+- DEV not testing before claiming complete
+- PM approving without integration verification
+- No micro-phase breakdown with user approval gates
+
+---
+
+## New Protocol Created
+
+**File:** `.claude/docs/MICRO_PHASE_PROTOCOL.md`
+
+**Key Rules:**
+- Rule 0: Full document reading with proof (certificates required)
+- Rule 0.3: DEV only sees micro-phase details (not full project)
+- Rule 0.5: Phase entry STOP for micro-phase development with user
+- Rule 1: Proof of reading with citations
+- Rule 2: Micro-phase structure (atomic tasks)
+- Rule 3: Expert review (pydantic_architect.md, copilot_kit.md)
+- Rule 4: agent-browser verification for ALL AI (no exceptions)
+- Rule 5: Work logs with actual output (not summaries)
+- Rule 6: Environment capture at phase end
+- Rule 7: Troubleshooting protocol (10 iteration max)
+- Rule 8: Non-gameable testing (nonce, timestamps, independent verify)
 
 ---
 
 ## Current State
 
-**Branch:** dev-sprint-S2.2
-**Current Commit:** 9b125f9
-**Base:** df23763 (Phase 0-1: database schema files)
+**Branch:** dev-sprint-S2.2-R1
+**Commit:** a8e6b65
+**Position:** Phase 2 entry - STOPPED for micro-phase development
 
-**What's Included:**
-- Database schema (conversations.ts, messages.ts)
-- Governance fix (steertrue-subagent-hook.ps1 with session isolation)
-- Documentation (LESSONS_LEARNED, COMMON_MISTAKES, BUG_REPORT_001)
+**Completed Phases:**
+- Phase 0: Architect Consultation - DONE
+- Phase 1: Python Agent Setup - DONE (deployed, healthy)
 
----
-
-## Ready to Resume
-
-Sprint S2.2 can restart from **Phase 2 (Walking Skeleton)**.
-
-Previous Phase 3A-5 work was reverted. Must re-implement with:
-1. Deployment verification between EVERY phase
-2. `npm ci` locally before approving (simulates Railway)
-3. All subagents now receive L2/proof_enforcement
+**Failed Phase:**
+- Phase 2: Frontend Connection - FAILED (3 bugs, restarting)
 
 ---
 
-## No Blockers
+## To Resume
 
-Sprint ready to proceed.
+1. User and Orchestrator develop micro-phases for Phase 2
+2. Each micro-phase gets expert review
+3. User approves each micro-phase before execution
+4. DEV receives ONLY micro-phase spec (not full project)
+5. All verification uses agent-browser
+6. All outputs approved by user
+
+---
+
+## Environment (Verified)
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Frontend | steertrue-chat-dev-sandbox.up.railway.app | Healthy |
+| Python Agent | steertrue-pydantic-ai-dev-sandbox.up.railway.app | Healthy |
+
+| Variable | Value | Location |
+|----------|-------|----------|
+| PYDANTIC_AI_URL | https://steertrue-pydantic-ai-dev-sandbox.up.railway.app | Railway frontend |
