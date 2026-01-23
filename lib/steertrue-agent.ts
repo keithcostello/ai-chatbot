@@ -24,7 +24,7 @@ import {
   type TextMessageContentEvent,
   type TextMessageEndEvent,
 } from '@ag-ui/core';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subscriber } from 'rxjs';
 import Anthropic from '@anthropic-ai/sdk';
 
 // SteerTrue API configuration
@@ -179,32 +179,41 @@ export class SteerTrueAgent extends AbstractAgent {
    * Implement the abstract run method from AbstractAgent
    * This is called by CopilotKit to handle chat messages
    *
-   * FIX for BUG-013: RUN_STARTED must be emitted SYNCHRONOUSLY
-   * The AG-UI verifyEvents validator subscribes to the Observable immediately
-   * and requires the first event to be RUN_STARTED. If we emit it inside
-   * an async function, it happens in a future microtask, too late for the validator.
+   * FIX for BUG-013: Use new Observable() pattern like BuiltInAgent
+   *
+   * ROOT CAUSE: The previous fix used Subject and emitted RUN_STARTED before
+   * returning the Observable. Subject does NOT buffer events - events emitted
+   * before subscription are LOST. When AbstractAgent.runAgent() pipes through
+   * transformChunks and verifyEvents, it subscribes AFTER our run() returns,
+   * so RUN_STARTED was already emitted and lost.
+   *
+   * FIX: Use new Observable((subscriber) => {...}) pattern. The callback runs
+   * when subscribed, so RUN_STARTED is emitted at the right time.
    */
   run(input: RunAgentInput): Observable<BaseEvent> {
-    const subject = new Subject<BaseEvent>();
     const runIdToUse = input?.runId || generateMessageId();
 
-    // CRITICAL FIX: Emit RUN_STARTED SYNCHRONOUSLY before returning Observable
-    // This MUST happen before the async handler starts
-    const runStartedEvent: RunStartedEvent = {
-      type: EventType.RUN_STARTED,
-      runId: runIdToUse,
-      threadId: this.threadId,
-      timestamp: Date.now(),
-    };
-    subject.next(runStartedEvent);
+    return new Observable<BaseEvent>((subscriber: Subscriber<BaseEvent>) => {
+      // Emit RUN_STARTED - this happens when subscribed, not when Observable is created
+      const runStartedEvent: RunStartedEvent = {
+        type: EventType.RUN_STARTED,
+        runId: runIdToUse,
+        threadId: this.threadId,
+        timestamp: Date.now(),
+      };
+      subscriber.next(runStartedEvent);
+      console.log('[SteerTrueAgent] RUN_STARTED emitted');
 
-    // Now run the async handler for the rest of the processing
-    this.handleRun(input, subject, runIdToUse).catch((error) => {
-      console.error('[SteerTrueAgent] Run error:', error);
-      subject.error(error);
+      // Run the async handler
+      this.handleRun(input, subscriber, runIdToUse)
+        .then(() => {
+          subscriber.complete();
+        })
+        .catch((error) => {
+          console.error('[SteerTrueAgent] Run error:', error);
+          subscriber.error(error);
+        });
     });
-
-    return subject.asObservable();
   }
 
   /**
@@ -249,13 +258,13 @@ export class SteerTrueAgent extends AbstractAgent {
    * Async handler for the run method
    * NOTE: Using arrow function to preserve `this` binding when called asynchronously
    * BUG-011 FIX: this.sessionId was undefined because `this` context was lost
-   * BUG-013 FIX: RUN_STARTED is now emitted synchronously in run(), not here
+   * BUG-013 FIX: Uses Subscriber from Observable pattern (not Subject)
+   *
+   * NOTE: subscriber.complete() is called by run() after this promise resolves.
+   * Do NOT call subscriber.complete() here - it's handled by the Observable creator.
    */
-  private handleRun = async (input: RunAgentInput, subject: Subject<BaseEvent>, runIdToUse: string): Promise<void> => {
+  private handleRun = async (input: RunAgentInput, subscriber: Subscriber<BaseEvent>, runIdToUse: string): Promise<void> => {
     const messageId = generateMessageId();
-
-    // NOTE: RUN_STARTED was already emitted synchronously in run() method
-    // This fixes BUG-013: "First event must be 'RUN_STARTED'" error
 
     // Defensive check for input and messages
     if (!input || !input.messages) {
@@ -266,12 +275,12 @@ export class SteerTrueAgent extends AbstractAgent {
         code: 'INVALID_INPUT',
         timestamp: Date.now(),
       };
-      subject.next(errorEvent);
-      subject.complete();
+      subscriber.next(errorEvent);
+      // Don't complete here - let the Observable creator handle it
       return;
     }
 
-    const { messages, runId } = input;
+    const { messages } = input;
     console.log('[SteerTrueAgent] handleRun called with', messages.length, 'messages');
 
     // Extract the latest user message
@@ -310,7 +319,7 @@ export class SteerTrueAgent extends AbstractAgent {
         role: 'assistant',
         timestamp: Date.now(),
       };
-      subject.next(textStartEvent);
+      subscriber.next(textStartEvent);
 
       // Stream from Anthropic
       const stream = await this.anthropic.messages.stream({
@@ -332,7 +341,7 @@ export class SteerTrueAgent extends AbstractAgent {
             delta: event.delta.text,
             timestamp: Date.now(),
           };
-          subject.next(textContentEvent);
+          subscriber.next(textContentEvent);
         }
       }
 
@@ -342,7 +351,7 @@ export class SteerTrueAgent extends AbstractAgent {
         messageId,
         timestamp: Date.now(),
       };
-      subject.next(textEndEvent);
+      subscriber.next(textEndEvent);
 
       // Emit run finished event
       const runFinishedEvent: RunFinishedEvent = {
@@ -351,7 +360,7 @@ export class SteerTrueAgent extends AbstractAgent {
         threadId: this.threadId,
         timestamp: Date.now(),
       };
-      subject.next(runFinishedEvent);
+      subscriber.next(runFinishedEvent);
 
       console.log('[SteerTrueAgent] Response complete, blocks_injected:', blocksInjected);
 
@@ -365,10 +374,9 @@ export class SteerTrueAgent extends AbstractAgent {
         code: 'AGENT_ERROR',
         timestamp: Date.now(),
       };
-      subject.next(errorEvent);
+      subscriber.next(errorEvent);
     }
-
-    subject.complete();
+    // Don't call subscriber.complete() here - the Observable creator handles it
   }
 }
 
