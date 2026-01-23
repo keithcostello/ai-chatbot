@@ -4,6 +4,11 @@ Pydantic AI agent definition for chat interactions.
 Reference: https://ai.pydantic.dev/ - Pydantic AI documentation
 Reference: CONTEXT.md lines 469-485 - Agent definition pattern
 Reference: pydantic_architect.md - "Text is the interface, but Structure is the product"
+
+FIX: BUG-003 - stream_text() incompatible with output_type
+Resolution: Use separate agents for sync (structured) and streaming (text).
+- Sync mode: output_type=ChatResponse for structured validation
+- Streaming mode: no output_type, stream raw text
 """
 
 import logging
@@ -24,7 +29,7 @@ MAX_RETRIES = 2  # Per PROMPT.md lines 266-281
 
 def create_chat_agent(system_prompt: str = "") -> Agent[None, ChatResponse]:
     """
-    Create a Pydantic AI agent configured for chat.
+    Create a Pydantic AI agent configured for structured output (sync mode).
 
     NOTE: The system_prompt parameter is replaced by SteerTrue governance.
     We pass it dynamically per request via agent.run().
@@ -35,6 +40,22 @@ def create_chat_agent(system_prompt: str = "") -> Agent[None, ChatResponse]:
     return Agent(
         f"anthropic:{ANTHROPIC_MODEL}",
         output_type=ChatResponse,
+        system_prompt=system_prompt or "You are a helpful AI assistant.",
+    )
+
+
+def create_streaming_agent(system_prompt: str = "") -> Agent[None, str]:
+    """
+    Create a Pydantic AI agent configured for streaming (text mode).
+
+    BUG-003 FIX: stream_text() only works without output_type.
+    This agent returns plain text which can be streamed.
+
+    Reference: https://ai.pydantic.dev/ - Streaming requires text output mode
+    """
+    return Agent(
+        f"anthropic:{ANTHROPIC_MODEL}",
+        # No output_type - enables stream_text()
         system_prompt=system_prompt or "You are a helpful AI assistant.",
     )
 
@@ -111,19 +132,22 @@ async def chat_streaming(
 
     Yields SSE-formatted chunks for streaming to the client.
 
+    BUG-003 FIX: Use create_streaming_agent (no output_type) instead of
+    create_chat_agent (with output_type). stream_text() only works without
+    structured output.
+
     Reference: CONTEXT.md lines 409-415 - Streaming response format
     """
     try:
-        # Create agent with SteerTrue system prompt
-        agent = create_chat_agent(system_prompt)
+        # BUG-003 FIX: Use streaming agent (no output_type) for stream_text()
+        agent = create_streaming_agent(system_prompt)
 
         # Use Pydantic AI's streaming capability
-        # Note: Pydantic AI streaming works differently - we stream the raw response
-        # and then validate at the end
+        # stream_text() works because we don't have output_type set
         async with agent.run_stream(message) as result:
             accumulated_content = ""
 
-            # Stream text chunks
+            # Stream text chunks - now works without output_type
             async for text in result.stream_text():
                 accumulated_content += text
                 yield {
@@ -145,14 +169,6 @@ async def chat_streaming(
                 "blocks_injected": blocks_injected,
                 "total_tokens": total_tokens
             }
-
-    except ValidationError as e:
-        logger.error(f"Streaming validation error: {e}")
-        yield {
-            "type": "error",
-            "code": "VALIDATION_ERROR",
-            "message": str(e)
-        }
 
     except Exception as e:
         logger.error(f"Streaming error: {e}")
