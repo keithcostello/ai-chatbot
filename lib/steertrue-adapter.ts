@@ -133,7 +133,7 @@ interface TextMessageLike {
  */
 export class SteerTrueAnthropicAdapter implements CopilotServiceAdapter {
   public model: string;
-  public provider: string = 'anthropic-steertrue';
+  public provider: string = 'anthropic'; // Must be 'anthropic' - CopilotKit only supports: openai, anthropic, google
   private anthropic: Anthropic;
   private sessionId: string;
 
