@@ -9,6 +9,11 @@
  *
  * Architecture:
  * CopilotKit -> SteerTrueAgent -> SteerTrue API (get system_prompt) -> Anthropic API
+ *
+ * Phase 5: Message Persistence
+ * Agent now supports persistence callbacks to save messages to database.
+ * - onUserMessage: Called when user message is received
+ * - onAssistantMessage: Called when assistant response is complete
  */
 
 import { AbstractAgent, type AgentConfig } from '@ag-ui/client';
@@ -26,6 +31,12 @@ import {
 } from '@ag-ui/core';
 import { Observable, Subscriber } from 'rxjs';
 import Anthropic from '@anthropic-ai/sdk';
+
+// Persistence callback types for Phase 5
+export interface PersistenceCallbacks {
+  onUserMessage?: (content: string) => Promise<void>;
+  onAssistantMessage?: (content: string, blocksInjected: string[], totalTokens: number) => Promise<void>;
+}
 
 // SteerTrue API configuration
 const STEERTRUE_API_URL = process.env.STEERTRUE_API_URL;
@@ -135,6 +146,9 @@ function generateMessageId(): string {
 export interface SteerTrueAgentConfig extends AgentConfig {
   model?: string;
   sessionId?: string;
+  conversationId?: string;
+  userId?: string;
+  persistence?: PersistenceCallbacks;
 }
 
 /**
@@ -147,6 +161,9 @@ export class SteerTrueAgent extends AbstractAgent {
   private anthropic: Anthropic;
   private model: string;
   private sessionId: string;
+  private conversationId?: string;
+  private userId?: string;
+  private persistence?: PersistenceCallbacks;
 
   constructor(config?: SteerTrueAgentConfig) {
     super({
@@ -160,11 +177,14 @@ export class SteerTrueAgent extends AbstractAgent {
 
     this.model = config?.model || 'claude-sonnet-4-20250514';
     this.sessionId = config?.sessionId || 'default-session';
+    this.conversationId = config?.conversationId;
+    this.userId = config?.userId;
+    this.persistence = config?.persistence;
     this.anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    console.log('[SteerTrueAgent] Initialized with model:', this.model, 'sessionId:', this.sessionId);
+    console.log('[SteerTrueAgent] Initialized with model:', this.model, 'sessionId:', this.sessionId, 'conversationId:', this.conversationId);
   }
 
   /**
@@ -236,7 +256,7 @@ export class SteerTrueAgent extends AbstractAgent {
   /**
    * Clone this agent for safe concurrent use.
    * CRITICAL: CopilotKit clones agents before running them (see handleRunAgent).
-   * Without this override, custom properties (anthropic, model, sessionId) would be lost.
+   * Without this override, custom properties (anthropic, model, sessionId, persistence) would be lost.
    */
   clone(): SteerTrueAgent {
     const cloned = new SteerTrueAgent({
@@ -248,6 +268,9 @@ export class SteerTrueAgent extends AbstractAgent {
       debug: this.debug,
       model: this.model,
       sessionId: this.sessionId,
+      conversationId: this.conversationId,
+      userId: this.userId,
+      persistence: this.persistence,
     });
     // Copy middlewares
     cloned['middlewares'] = [...this['middlewares']];
@@ -294,6 +317,17 @@ export class SteerTrueAgent extends AbstractAgent {
       // BUG-011 DEBUG: Log this.sessionId to verify binding
       console.log('[SteerTrueAgent] About to call SteerTrue with this.sessionId:', this.sessionId);
 
+      // Phase 5: Persist user message before processing
+      if (this.persistence?.onUserMessage && latestUserMessage) {
+        try {
+          await this.persistence.onUserMessage(latestUserMessage);
+          console.log('[SteerTrueAgent] User message persisted');
+        } catch (persistError) {
+          console.error('[SteerTrueAgent] Failed to persist user message:', persistError);
+          // Continue processing - persistence failure shouldn't block chat
+        }
+      }
+
       // Call SteerTrue to get governance-injected system prompt
       const { systemPrompt, blocksInjected } = await callSteerTrue(
         latestUserMessage || 'Hello',  // Fallback to prevent empty message
@@ -329,12 +363,16 @@ export class SteerTrueAgent extends AbstractAgent {
         messages: anthropicMessages,
       });
 
+      // Collect full response for persistence
+      let fullResponse = '';
+
       // Process streaming events
       for await (const event of stream) {
         if (
           event.type === 'content_block_delta' &&
           event.delta.type === 'text_delta'
         ) {
+          fullResponse += event.delta.text;
           const textContentEvent: TextMessageContentEvent = {
             type: EventType.TEXT_MESSAGE_CONTENT,
             messageId,
@@ -342,6 +380,21 @@ export class SteerTrueAgent extends AbstractAgent {
             timestamp: Date.now(),
           };
           subscriber.next(textContentEvent);
+        }
+      }
+
+      // Get final message for token count
+      const finalMessage = await stream.finalMessage();
+      const totalTokens = (finalMessage.usage?.input_tokens || 0) + (finalMessage.usage?.output_tokens || 0);
+
+      // Phase 5: Persist assistant message after completion
+      if (this.persistence?.onAssistantMessage && fullResponse) {
+        try {
+          await this.persistence.onAssistantMessage(fullResponse, blocksInjected, totalTokens);
+          console.log('[SteerTrueAgent] Assistant message persisted with', blocksInjected.length, 'blocks');
+        } catch (persistError) {
+          console.error('[SteerTrueAgent] Failed to persist assistant message:', persistError);
+          // Continue - persistence failure shouldn't block response
         }
       }
 
@@ -362,7 +415,7 @@ export class SteerTrueAgent extends AbstractAgent {
       };
       subscriber.next(runFinishedEvent);
 
-      console.log('[SteerTrueAgent] Response complete, blocks_injected:', blocksInjected);
+      console.log('[SteerTrueAgent] Response complete, blocks_injected:', blocksInjected, 'tokens:', totalTokens);
 
     } catch (error) {
       console.error('[SteerTrueAgent] Error:', error);

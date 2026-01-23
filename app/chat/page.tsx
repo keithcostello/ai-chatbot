@@ -2,10 +2,10 @@
 
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
 import { CopilotChat } from '@copilotkit/react-ui';
-import { useCopilotReadable } from '@copilotkit/react-core';
+import { useCopilotReadable, useCopilotChatInternal } from '@copilotkit/react-core';
 
 // Import CopilotKit styles
 import '@copilotkit/react-ui/styles.css';
@@ -19,11 +19,105 @@ const colors = {
   textPrimary: '#1e3a3a',   // Message text
 };
 
+// Conversation type
+interface Conversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Message type from API
+interface StoredMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+  blocksInjected?: string[];
+  totalTokens?: number;
+}
+
+// Convert stored messages to CopilotKit format
+function storedToAgUIMessages(stored: StoredMessage[]): Array<{
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}> {
+  return stored
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+}
+
+// Component that handles message loading
+function MessageLoader({
+  conversationId,
+  onMessagesLoaded
+}: {
+  conversationId: string | null;
+  onMessagesLoaded: (count: number) => void;
+}) {
+  const { setMessages } = useCopilotChatInternal();
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    if (!conversationId) {
+      console.log('[MessageLoader] No conversation, clearing messages');
+      setMessages([]);
+      onMessagesLoaded(0);
+      return;
+    }
+
+    const loadMessages = async () => {
+      try {
+        console.log('[MessageLoader] Loading messages for:', conversationId);
+        const response = await fetch(`/api/conversations/${conversationId}/messages`);
+        if (response.ok) {
+          const data = await response.json();
+          const agUIMessages = storedToAgUIMessages(data.messages || []);
+          console.log('[MessageLoader] Loaded', agUIMessages.length, 'messages');
+          setMessages(agUIMessages);
+          onMessagesLoaded(agUIMessages.length);
+        } else if (response.status === 404) {
+          console.log('[MessageLoader] Conversation not found, clearing messages');
+          setMessages([]);
+          onMessagesLoaded(0);
+        }
+      } catch (error) {
+        console.error('[MessageLoader] Failed to load messages:', error);
+        setMessages([]);
+        onMessagesLoaded(0);
+      }
+    };
+
+    loadMessages();
+  }, [conversationId, setMessages, onMessagesLoaded]);
+
+  return null; // This component only handles side effects
+}
+
 // Inner component that uses CopilotKit hooks
-function ChatContent() {
+function ChatContent({
+  currentConversationId,
+  conversations,
+  onNewChat,
+  onSelectConversation,
+}: {
+  currentConversationId: string | null;
+  conversations: Conversation[];
+  onNewChat: () => void;
+  onSelectConversation: (id: string) => void;
+}) {
   const { data: session } = useSession();
-  const [currentConversationId] = useState<string | null>(null);
   const [messageCount, setMessageCount] = useState(0);
+
+  // Handle message count updates
+  const handleMessagesLoaded = useCallback((count: number) => {
+    setMessageCount(count);
+  }, []);
 
   // useCopilotReadable hooks per CONTEXT.md Section 6 lines 355-373
   // Inject conversation context for LLM awareness
@@ -49,6 +143,12 @@ function ChatContent() {
 
   return (
     <div className="flex h-screen" style={{ backgroundColor: colors.background }}>
+      {/* Message loader - loads persisted messages into CopilotKit state */}
+      <MessageLoader
+        conversationId={currentConversationId}
+        onMessagesLoaded={handleMessagesLoaded}
+      />
+
       {/* Sidebar - design per CONTEXT.md Section 7 */}
       <div
         className="w-60 p-4 flex flex-col"
@@ -56,18 +156,39 @@ function ChatContent() {
       >
         <div className="text-white text-xl font-bold mb-6">SteerTrue</div>
         <button
-          onClick={() => {
-            // New chat will be handled by conversation management in Phase 5/6
-            setMessageCount(0);
-          }}
+          onClick={onNewChat}
           className="text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90"
           style={{ backgroundColor: colors.primaryAccent }}
         >
           + New Chat
         </button>
+
+        {/* Conversation list */}
+        <div className="mt-4 flex-1 overflow-y-auto">
+          {conversations.length === 0 ? (
+            <div className="text-white/50 text-sm text-center py-4">
+              No conversations yet
+            </div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => onSelectConversation(conv.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg mb-1 truncate text-sm transition-colors ${
+                  currentConversationId === conv.id
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/70 hover:bg-white/10'
+                }`}
+              >
+                {conv.title}
+              </button>
+            ))
+          )}
+        </div>
+
         <div className="mt-4 text-white/70 text-sm">
           {session?.user?.name && (
-            <div className="mt-auto pt-4 border-t border-white/20">
+            <div className="pt-4 border-t border-white/20">
               Signed in as {session.user.name}
             </div>
           )}
@@ -79,7 +200,9 @@ function ChatContent() {
         <CopilotChat
           labels={{
             title: "SteerTrue Chat",
-            initial: "How can I help you today?",
+            initial: currentConversationId
+              ? "Loading conversation..."
+              : "Click 'New Chat' to start a conversation",
           }}
           className="h-full copilot-chat-custom"
           onInProgress={(inProgress) => {
@@ -182,6 +305,57 @@ function ChatContent() {
 
 export default function ChatPage() {
   const { status } = useSession();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+
+  // Load conversations on mount
+  useEffect(() => {
+    if (status === 'authenticated') {
+      loadConversations();
+    }
+  }, [status]);
+
+  // Load user's conversations
+  const loadConversations = useCallback(async () => {
+    try {
+      const response = await fetch('/api/conversations');
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data.conversations || []);
+        console.log('[ChatPage] Loaded', data.conversations?.length || 0, 'conversations');
+      }
+    } catch (error) {
+      console.error('[ChatPage] Failed to load conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, []);
+
+  // Create new conversation
+  const handleNewChat = useCallback(async () => {
+    try {
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Conversation' }),
+      });
+      if (response.ok) {
+        const newConv = await response.json();
+        console.log('[ChatPage] Created new conversation:', newConv.id);
+        setConversations(prev => [newConv, ...prev]);
+        setCurrentConversationId(newConv.id);
+      }
+    } catch (error) {
+      console.error('[ChatPage] Failed to create conversation:', error);
+    }
+  }, []);
+
+  // Select existing conversation
+  const handleSelectConversation = useCallback((id: string) => {
+    console.log('[ChatPage] Selected conversation:', id);
+    setCurrentConversationId(id);
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -190,7 +364,7 @@ export default function ChatPage() {
     }
   }, [status]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || isLoadingConversations) {
     return (
       <div
         className="flex h-screen items-center justify-center"
@@ -203,9 +377,20 @@ export default function ChatPage() {
 
   // Wrap with CopilotKit provider pointing to /api/copilot endpoint
   // Per CONTEXT.md Section 6 lines 565-572
+  // Phase 5: Pass conversationId via headers for persistence
   return (
-    <CopilotKit runtimeUrl="/api/copilot">
-      <ChatContent />
+    <CopilotKit
+      runtimeUrl="/api/copilot"
+      headers={{
+        'X-Conversation-Id': currentConversationId || '',
+      }}
+    >
+      <ChatContent
+        currentConversationId={currentConversationId}
+        conversations={conversations}
+        onNewChat={handleNewChat}
+        onSelectConversation={handleSelectConversation}
+      />
     </CopilotKit>
   );
 }
