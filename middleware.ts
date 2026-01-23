@@ -15,7 +15,8 @@ import { NextResponse } from 'next/server';
 const { auth } = NextAuth(authConfig);
 
 // Routes that don't require authentication
-const publicRoutes = ['/', '/login', '/signup', '/api/auth', '/api/health'];
+// Note: /chat added for Phase 2 skeleton testing - will require auth in Phase 6
+const publicRoutes = ['/', '/login', '/signup', '/api/auth', '/api/health', '/chat'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
