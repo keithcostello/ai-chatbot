@@ -22,7 +22,7 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
-    steertrue_agent: new HttpAgent({ url: `${PYTHON_AGENT_URL}/` }),
+    steertrue_agent: new HttpAgent({ url: `${PYTHON_AGENT_URL}/copilotkit` }),
   },
 });
 
