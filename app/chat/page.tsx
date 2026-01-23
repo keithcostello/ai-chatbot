@@ -16,12 +16,18 @@ import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 
 export default function ChatPage() {
-  // Get runtime URL from env and ensure HTTPS protocol
+  // Get runtime URL from env and normalize
   let runtimeUrl = process.env.NEXT_PUBLIC_COPILOT_RUNTIME_URL;
 
-  // Force HTTPS to prevent mixed content errors
-  if (runtimeUrl && runtimeUrl.startsWith("http://")) {
-    runtimeUrl = runtimeUrl.replace("http://", "https://");
+  if (runtimeUrl) {
+    // Force HTTPS to prevent mixed content errors
+    if (runtimeUrl.startsWith("http://")) {
+      runtimeUrl = runtimeUrl.replace("http://", "https://");
+    }
+    // Ensure trailing slash to prevent 307 redirect (which uses HTTP)
+    if (!runtimeUrl.endsWith("/")) {
+      runtimeUrl = runtimeUrl + "/";
+    }
   }
 
   // Debug: Log runtime URL
