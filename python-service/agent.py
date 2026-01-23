@@ -91,10 +91,11 @@ async def chat_with_retry(
             # Run the agent - Pydantic AI handles structured output validation
             result = await agent.run(message)
 
-            # Pydantic AI returns result.data as the validated ChatResponse
+            # Pydantic AI returns result.output as the validated ChatResponse
+            # Reference: https://ai.pydantic.dev/ - AgentRunResult.output contains structured output
             # We need to inject our blocks_injected since the LLM doesn't know them
             response = ChatResponse(
-                content=result.data.content if hasattr(result.data, 'content') else str(result.data),
+                content=result.output.content if hasattr(result.output, 'content') else str(result.output),
                 blocks_injected=blocks_injected,
                 total_tokens=result.usage().total_tokens if hasattr(result, 'usage') else 0
             )
